@@ -1,0 +1,7 @@
+{
+  "installCommand": "npm install",
+  "startCommand": "npx expo start --web",
+  "env": {
+    "NODE_VERSION": "18"
+  }
+}
