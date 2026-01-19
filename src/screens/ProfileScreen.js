@@ -10,9 +10,16 @@ import { StatusBar } from 'expo-status-bar';
 const { width } = Dimensions.get('window');
 
 const ProfileScreen = ({ navigation }) => {
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
     const TABS = ['Momentos', 'Covers', 'Duetos'];
     const [activeTab, setActiveTab] = React.useState('Covers');
+
+    const handleLogout = async () => {
+        Alert.alert('Cerrar Sesión', '¿Estás seguro de que quieres salir?', [
+            { text: 'Cancelar', style: 'cancel' },
+            { text: 'Cerrar Sesión', style: 'destructive', onPress: logout }
+        ]);
+    };
 
     return (
         <View style={styles.container}>
@@ -21,8 +28,8 @@ const ProfileScreen = ({ navigation }) => {
             {/* Header / Top Bar */}
             <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
                 <View style={styles.header}>
-                    <TouchableOpacity>
-                        <Ionicons name="person-add-outline" size={24} color={COLORS.text} />
+                    <TouchableOpacity onPress={handleLogout}>
+                        <Ionicons name="log-out-outline" size={24} color={COLORS.error} />
                     </TouchableOpacity>
                     <View style={styles.headerRight}>
                         <TouchableOpacity style={styles.iconBtn}>
