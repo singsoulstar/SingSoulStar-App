@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from '../lib/supabase';
 
 const AuthContext = createContext();
 
@@ -8,62 +9,61 @@ export const AuthProvider = ({ children }) => {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        checkUserLoggedIn();
+        // Check active session
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session) {
+                mapSessionToUser(session);
+            } else {
+                setIsLoading(false);
+            }
+        });
+
+        // Listen for auth changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            if (session) {
+                mapSessionToUser(session);
+            } else {
+                setUser(null);
+                setIsLoading(false);
+            }
+        });
+
+        return () => subscription.unsubscribe();
     }, []);
 
-    const checkUserLoggedIn = async () => {
-        try {
-            const userData = await AsyncStorage.getItem('user_session');
-            if (userData) {
-                setUser(JSON.parse(userData));
-            }
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setIsLoading(false);
+    const mapSessionToUser = (session) => {
+        const { user } = session;
+        const profile = {
+            id: user.id,
+            email: user.email,
+            name: user.user_metadata?.name || user.email.split('@')[0],
+            avatar: user.user_metadata?.avatar || `https://i.pravatar.cc/150?u=${user.email}`,
+            role: 'user', // Default
+            permissions: []
+        };
+
+        // Static Role Mapping (Coste Cero / No backend logic needed yet)
+        if (profile.email.toLowerCase() === 'admin@singsoulstar.com') {
+            profile.name = 'Super Admin';
+            profile.role = 'admin';
+            profile.permissions = ['all'];
+        } else if (profile.email.toLowerCase().includes('assistant')) {
+            profile.role = 'assistant';
+            profile.permissions = ['moderate_chat', 'approve_songs'];
         }
+
+        setUser(profile);
+        setIsLoading(false);
     };
 
     const login = async (email, password) => {
         setIsLoading(true);
         try {
-            // Check in registered users first
-            const registeredUsersData = await AsyncStorage.getItem('registered_users');
-            const registeredUsers = registeredUsersData ? JSON.parse(registeredUsersData) : [];
-
-            let foundUser = registeredUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
-
-            if (foundUser) {
-                await AsyncStorage.setItem('user_session', JSON.stringify(foundUser));
-                setUser(foundUser);
-                setIsLoading(false);
-                return;
-            }
-
-            // Fallback to hardcoded roles for demo if not found in registered
-            let mockUser = {
-                id: 'u_' + Date.now(),
-                name: 'User ' + Math.floor(Math.random() * 1000),
-                email: email,
-                avatar: 'https://i.pravatar.cc/150?u=' + email,
-                role: 'user',
-                permissions: []
-            };
-
-            if (email.toLowerCase() === 'admin@singsoulstar.com') {
-                mockUser.name = 'Super Admin';
-                mockUser.role = 'admin';
-                mockUser.permissions = ['all'];
-            } else if (email.toLowerCase().includes('assistant')) {
-                mockUser.name = 'Assistant User';
-                mockUser.role = 'assistant';
-                mockUser.permissions = ['moderate_chat', 'approve_songs'];
-            }
-
-            await AsyncStorage.setItem('user_session', JSON.stringify(mockUser));
-            setUser(mockUser);
+            const { error } = await supabase.auth.signInWithPassword({ email, password });
+            if (error) throw error;
         } catch (e) {
             console.error(e);
+            throw e; // Propagate to screen for Alert
         } finally {
             setIsLoading(false);
         }
@@ -72,29 +72,16 @@ export const AuthProvider = ({ children }) => {
     const register = async (name, email, password) => {
         setIsLoading(true);
         try {
-            const registeredUsersData = await AsyncStorage.getItem('registered_users');
-            const registeredUsers = registeredUsersData ? JSON.parse(registeredUsersData) : [];
-
-            if (registeredUsers.some(u => u.email === email)) {
-                throw new Error("User already exists");
-            }
-
-            const newUser = {
-                id: 'u_' + Date.now(),
-                name,
+            const { error } = await supabase.auth.signUp({
                 email,
-                avatar: 'https://i.pravatar.cc/150?u=' + email,
-                role: 'user',
-                permissions: [],
-                bio: '¡Hola! Soy nuevo en SingSoulStar.'
-            };
-
-            const updatedUsers = [...registeredUsers, newUser];
-            await AsyncStorage.setItem('registered_users', JSON.stringify(updatedUsers));
-
-            // Auto login after registration
-            await AsyncStorage.setItem('user_session', JSON.stringify(newUser));
-            setUser(newUser);
+                password,
+                options: {
+                    data: { name } // Store name in metadata
+                }
+            });
+            if (error) throw error;
+            // Note: If email confirmation is enabled, user won't be logged in immediately unless auto-confirm is on.
+            // We'll let the UI handle the "Check email" message if needed, but for now we assume it might work or show the alert.
         } catch (e) {
             console.error(e);
             throw e;
@@ -103,39 +90,33 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    const updateProfile = async (updatedData) => {
-        if (!user) return;
-        try {
-            const newUserState = { ...user, ...updatedData };
-
-            // Update session
-            await AsyncStorage.setItem('user_session', JSON.stringify(newUserState));
-
-            // Update in global users list
-            const registeredUsersData = await AsyncStorage.getItem('registered_users');
-            if (registeredUsersData) {
-                const registeredUsers = JSON.parse(registeredUsersData);
-                const updatedList = registeredUsers.map(u => u.id === user.id ? newUserState : u);
-                await AsyncStorage.setItem('registered_users', JSON.stringify(updatedList));
-            }
-
-            setUser(newUserState);
-            return true;
-        } catch (e) {
-            console.error(e);
-            return false;
-        }
-    };
-
     const logout = async () => {
         setIsLoading(true);
         try {
-            await AsyncStorage.removeItem('user_session');
+            await supabase.auth.signOut();
             setUser(null);
         } catch (e) {
             console.error(e);
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const updateProfile = async (updatedData) => {
+        if (!user) return;
+        try {
+            const { error } = await supabase.auth.updateUser({
+                data: { ...updatedData }
+            });
+
+            if (error) throw error;
+
+            // Local state update checks onAuthStateChange usually, but we can force update
+            setUser(prev => ({ ...prev, ...updatedData }));
+            return true;
+        } catch (e) {
+            console.error(e);
+            return false;
         }
     };
 
