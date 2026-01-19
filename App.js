@@ -24,7 +24,7 @@ import { COLORS } from './src/theme/colors';
 
 // DEFENSIVE: Hardcoded colors for initial render to prevent crash if import fails
 const SAFE_PRIMARY = '#E91E63';
-const SAFE_BG = '#121212';
+const SAFE_BG = '#FFFFFF'; // Light Mode
 
 const prefix = Linking.createURL('/');
 
@@ -139,7 +139,7 @@ export default function App() {
       <ErrorBoundary>
         <AuthProvider>
           <View style={{ flex: 1, backgroundColor: SAFE_BG }}>
-            <StatusBar style="light" backgroundColor={SAFE_BG} />
+            <StatusBar style="dark" backgroundColor={SAFE_BG} />
             <AppContent />
           </View>
         </AuthProvider>
