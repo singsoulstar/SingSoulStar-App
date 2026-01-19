@@ -59,7 +59,7 @@ const UploadScreen = ({ navigation }) => {
 
     const handleNext = async () => {
         if (!title || !artist || !audioFile) {
-            Alert.alert('Missing Fields', 'Title, Artist, and Audio are required.');
+            Alert.alert('Campos Incompletos', 'Título, Artista y Audio son obligatorios.');
             return;
         }
 
@@ -67,15 +67,21 @@ const UploadScreen = ({ navigation }) => {
             // AUTO SYNC FLOW
             setIsUploading(true);
             try {
-                // Read LRC content
-                // For web compatibility with Expo Document Picker, fetching the URI usually gives the blob/text
-                const response = await fetch(lrcFile.uri);
-                const lrcContent = await response.text();
+                // Read LRC content robustly
+                let lrcContent = "";
+                if (Platform.OS === 'web' && lrcFile.file) {
+                    lrcContent = await lrcFile.file.text();
+                } else {
+                    const response = await fetch(lrcFile.uri);
+                    lrcContent = await response.text();
+                }
+
+                if (!lrcContent) throw new Error("El archivo LRC está vacío.");
 
                 const parsedLyrics = SongService.parseLrc(lrcContent);
 
                 if (parsedLyrics.length === 0) {
-                    throw new Error("Could not parse lyrics. Check file format.");
+                    throw new Error("No se encontraron letras válidas en el archivo LRC. Revisa el formato (ej: [00:12.34] texto).");
                 }
 
                 const metadata = {
@@ -84,15 +90,17 @@ const UploadScreen = ({ navigation }) => {
                     lyrics: parsedLyrics
                 };
 
+                // Show progress alert (or simulated)
+                console.log("Subiendo canción con letra auto-sincronizada...");
                 await SongService.uploadSong(metadata, audioFile, coverImage);
 
-                Alert.alert('¡Éxito!', 'Canción con letra sincronizada subida correctamente.', [
-                    { text: 'OK', onPress: () => navigation.navigate('MainTabs') }
+                Alert.alert('¡Éxito!', 'Canción con letra sincronizada subida correctamente al catálogo.', [
+                    { text: 'Ir al Inicio', onPress: () => navigation.navigate('MainTabs') }
                 ]);
 
             } catch (error) {
-                console.error(error);
-                Alert.alert('Error', 'Failed to process LRC file or upload song.');
+                console.error("LRC Upload Error:", error);
+                Alert.alert('Error de Subida', error.message || 'No se pudo procesar el archivo LRC o subir la canción.');
             } finally {
                 setIsUploading(false);
             }
@@ -109,7 +117,7 @@ const UploadScreen = ({ navigation }) => {
                 }
             });
         } else {
-            Alert.alert('Lyrics Missing', 'Please either paste lyrics OR select an LRC file.');
+            Alert.alert('Faltan Letras', 'Por favor, pega la letra o selecciona un archivo LRC.');
         }
     };
 
