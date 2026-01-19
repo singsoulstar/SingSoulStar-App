@@ -114,6 +114,10 @@ export const SongService = {
 
             // 3. Insert Record
             console.log("5. Insertando registro en tabla 'songs'...");
+
+            // Obtener el usuario actual para el campo created_by
+            const { data: { user } } = await supabase.auth.getUser();
+
             const { data, error } = await supabase
                 .from('songs')
                 .insert([{
@@ -122,6 +126,7 @@ export const SongService = {
                     lyrics: metadata.lyrics,
                     audio_url: audioUrl,
                     cover_url: coverUrl,
+                    created_by: user?.id || null, // Vincular al usuario si está logueado
                     created_at: new Date(),
                 }])
                 .select();
