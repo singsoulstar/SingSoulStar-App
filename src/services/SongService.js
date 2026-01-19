@@ -40,11 +40,20 @@ export const SongService = {
     uploadSong: async (metadata, audioFile, coverFile) => {
         try {
             // 1. Upload Audio
-            const audioExt = audioFile.uri.split('.').pop();
+            const audioExt = audioFile.name?.split('.').pop() || 'mp3';
             const audioPath = `${Date.now()}_audio.${audioExt}`;
+
+            // Web/Native compatibility: Convert URI to Blob
+            const audioResponse = await fetch(audioFile.uri);
+            const audioBlob = await audioResponse.blob();
+
             const { data: audioData, error: audioError } = await supabase.storage
-                .from('singsoulstar-assets') // Ensure this bucket exists
-                .upload(audioPath, audioFile, { contentType: 'audio/mpeg' }); // Expo handles file object for web/native differently, might need blob.
+                .from('singsoulstar-assets')
+                .upload(audioPath, audioBlob, {
+                    contentType: audioBlob.type || 'audio/mpeg',
+                    cacheControl: '3600',
+                    upsert: false
+                });
 
             if (audioError) throw audioError;
 
@@ -53,11 +62,19 @@ export const SongService = {
             // 2. Upload Cover (Optional)
             let coverUrl = null;
             if (coverFile) {
-                const coverExt = coverFile.uri.split('.').pop();
+                const coverExt = coverFile.name?.split('.').pop() || 'jpg';
                 const coverPath = `${Date.now()}_cover.${coverExt}`;
+
+                const coverResponse = await fetch(coverFile.uri);
+                const coverBlob = await coverResponse.blob();
+
                 const { error: coverError } = await supabase.storage
                     .from('singsoulstar-assets')
-                    .upload(coverPath, coverFile, { contentType: 'image/jpeg' });
+                    .upload(coverPath, coverBlob, {
+                        contentType: coverBlob.type || 'image/jpeg',
+                        cacheControl: '3600',
+                        upsert: false
+                    });
 
                 if (coverError) throw coverError;
                 coverUrl = supabase.storage.from('singsoulstar-assets').getPublicUrl(coverPath).data.publicUrl;
