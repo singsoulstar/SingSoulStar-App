@@ -63,7 +63,7 @@ const AppContent = () => {
   }
 
   return (
-    <NavigationContainer linking={linking} fallback={<ActivityIndicator color={COLORS.primary} />}>
+    <>
       {user ? (
         <Stack.Navigator
           screenOptions={{
@@ -96,7 +96,7 @@ const AppContent = () => {
           <Stack.Screen name="Register" component={RegisterScreen} />
         </Stack.Navigator>
       )}
-    </NavigationContainer>
+    </NavigationContainer >
   );
 };
 
