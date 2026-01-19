@@ -1,7 +1,7 @@
 {
   "name": "ruby-parsec",
   "version": "1.0.0",
-  "homepage": "https://manuelubianvillarreal-lab.github.io/SingSoulStar-App",
+  "homepage": "https://singsoulstar.github.io/SingSoulStar-App",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
