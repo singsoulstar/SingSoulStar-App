@@ -7,9 +7,13 @@ const SongCard = ({ title, artist, coverUrl, onSing }) => {
     return (
         <View style={styles.container}>
             <View style={styles.coverContainer}>
-                <View style={styles.placeholderCover}>
-                    <Ionicons name="musical-note" size={24} color={COLORS.textMuted} />
-                </View>
+                {coverUrl ? (
+                    <Image source={{ uri: coverUrl }} style={styles.coverImage} />
+                ) : (
+                    <View style={styles.placeholderCover}>
+                        <Ionicons name="musical-note" size={24} color={COLORS.textMuted} />
+                    </View>
+                )}
             </View>
 
             <View style={styles.infoContainer}>
@@ -42,6 +46,11 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.surfaceLight,
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    coverImage: {
+        width: 50,
+        height: 50,
+        borderRadius: 8,
     },
     infoContainer: {
         flex: 1,

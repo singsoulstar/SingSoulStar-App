@@ -57,7 +57,7 @@ const SingScreen = ({ navigation }) => {
         <SongCard
             title={item.title}
             artist={item.artist}
-            cover={item.cover}
+            coverUrl={item.cover_url}
             onSing={() => navigation.navigate('Recording', { song: item, mode: activeMode })}
         />
     );
