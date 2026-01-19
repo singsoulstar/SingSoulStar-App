@@ -83,28 +83,27 @@ export const SongService = {
             console.error("Upload Error:", e);
             throw e;
         }
-    }
-},
+    },
 
     parseLrc: (lrcContent) => {
         const lines = lrcContent.split('\n');
-const lyrics = [];
-const timeRegex = /\[(\d{2}):(\d{2})\.(\d{2,3})\]/;
+        const lyrics = [];
+        const timeRegex = /\[(\d{2}):(\d{2})\.(\d{2,3})\]/;
 
-lines.forEach(line => {
-    const match = timeRegex.exec(line);
-    if (match) {
-        const minutes = parseInt(match[1], 10);
-        const seconds = parseInt(match[2], 10);
-        const milliseconds = parseInt(match[3].padEnd(3, '0'), 10);
-        const time = (minutes * 60 * 1000) + (seconds * 1000) + milliseconds;
-        const text = line.replace(timeRegex, '').trim();
+        lines.forEach(line => {
+            const match = timeRegex.exec(line);
+            if (match) {
+                const minutes = parseInt(match[1], 10);
+                const seconds = parseInt(match[2], 10);
+                const milliseconds = parseInt(match[3].padEnd(3, '0'), 10);
+                const time = (minutes * 60 * 1000) + (seconds * 1000) + milliseconds;
+                const text = line.replace(timeRegex, '').trim();
 
-        if (text) {
-            lyrics.push({ time, text, singer: 'Both' }); // Default to Both
-        }
-    }
-});
-return lyrics;
+                if (text) {
+                    lyrics.push({ time, text, singer: 'Both' }); // Default to Both
+                }
+            }
+        });
+        return lyrics;
     }
 };
