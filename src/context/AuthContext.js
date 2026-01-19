@@ -38,6 +38,13 @@ export const AuthProvider = ({ children }) => {
             email: user.email,
             name: user.user_metadata?.name || user.email.split('@')[0],
             avatar: user.user_metadata?.avatar || `https://i.pravatar.cc/150?u=${user.email}`,
+            gender: user.user_metadata?.gender || 'Secreto',
+            birthday: user.user_metadata?.birthday || '',
+            relationship: user.user_metadata?.relationship || 'Secreto',
+            hometown: user.user_metadata?.hometown || '',
+            bio: user.user_metadata?.bio || '¡Hola! Soy nuevo en SingSoulStar.',
+            education: user.user_metadata?.education || '',
+            profession: user.user_metadata?.profession || '',
             role: 'user', // Default
             permissions: []
         };

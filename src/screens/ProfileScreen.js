@@ -1,120 +1,115 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, TextInput, Alert, Modal } from 'react-native';
+import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, GRADIENTS } from '../theme/colors';
 import { useAuth } from '../context/AuthContext';
+import { StatusBar } from 'expo-status-bar';
 
-const ProfileScreen = () => {
-    const { user, logout, updateProfile } = useAuth();
-    const [isEditing, setIsEditing] = React.useState(false);
-    const [name, setName] = React.useState(user?.name || '');
-    const [bio, setBio] = React.useState(user?.bio || '¡Hola! Soy nuevo en SingSoulStar.');
+const { width } = Dimensions.get('window');
 
-    const TABS = ['Moments', 'Covers', 'Duets'];
+const ProfileScreen = ({ navigation }) => {
+    const { user } = useAuth();
+    const TABS = ['Momentos', 'Covers', 'Duetos'];
     const [activeTab, setActiveTab] = React.useState('Covers');
 
-    const handleSave = async () => {
-        const success = await updateProfile({ name, bio });
-        if (success) {
-            setIsEditing(false);
-            Alert.alert('Éxito', 'Perfil actualizado correctamente');
-        } else {
-            Alert.alert('Error', 'No se pudo actualizar el perfil');
-        }
-    };
-
     return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <Ionicons name="person-add-outline" size={24} color="white" />
-                <Text style={styles.headerTitle}>{user?.name || 'Invitado'}</Text>
-                <TouchableOpacity onPress={logout}>
-                    <Ionicons name="log-out-outline" size={24} color="white" />
-                </TouchableOpacity>
-            </View>
+        <View style={styles.container}>
+            <StatusBar style="dark" />
 
-            <ScrollView contentContainerStyle={styles.scrollContent}>
-                {/* User Info Card */}
-                <View style={styles.profileCard}>
-                    <View style={styles.avatarContainer}>
-                        <Image
-                            source={{ uri: user?.avatar || 'https://i.pravatar.cc/300' }}
-                            style={styles.avatar}
-                        />
-                        <View style={styles.vipBadge}>
-                            <LinearGradient colors={['#FFD700', '#FFA500']} style={styles.vipGradient}>
-                                <Text style={styles.vipText}>VIP</Text>
-                            </LinearGradient>
-                        </View>
-                    </View>
-
-                    <Text style={styles.username}>{user?.name || 'Invitado'}</Text>
-                    <Text style={styles.bioText} numberOfLines={2}>{user?.bio || 'Sin biografía'}</Text>
-                    <Text style={styles.userId}>ID: {user?.id?.substring(0, 8) || '98765432'}</Text>
-
-                    <View style={styles.statsRow}>
-                        <StatItem value="0" label="Seguidores" />
-                        <StatItem value="0" label="Siguiendo" />
-                        <StatItem value="A+" label="Rango" />
-                    </View>
-
-                    <TouchableOpacity onPress={() => setIsEditing(true)}>
-                        <LinearGradient colors={GRADIENTS.primary} style={styles.editBtn}>
-                            <Text style={styles.editBtnText}>Editar Perfil</Text>
-                        </LinearGradient>
+            {/* Header / Top Bar */}
+            <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
+                <View style={styles.header}>
+                    <TouchableOpacity>
+                        <Ionicons name="person-add-outline" size={24} color={COLORS.text} />
                     </TouchableOpacity>
+                    <View style={styles.headerRight}>
+                        <TouchableOpacity style={styles.iconBtn}>
+                            <Ionicons name="scan-outline" size={24} color={COLORS.text} />
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.navigate('Settings')}>
+                            <Ionicons name="settings-outline" size={24} color={COLORS.text} />
+                        </TouchableOpacity>
+                    </View>
                 </View>
+            </SafeAreaView>
 
-                {/* Edit Modal */}
-                <Modal visible={isEditing} animationType="slide" transparent={true}>
-                    <View style={styles.modalOverlay}>
-                        <View style={styles.modalContent}>
-                            <Text style={styles.modalHeader}>Editar Perfil</Text>
-
-                            <Text style={styles.label}>Nombre</Text>
-                            <TextInput
-                                value={name}
-                                onChangeText={setName}
-                                style={styles.textInput}
-                                placeholder="Tu nombre"
-                                placeholderTextColor="#666"
+            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+                {/* Profile Card Section */}
+                <View style={styles.profileSection}>
+                    <View style={styles.userInfoRow}>
+                        <View style={styles.avatarContainer}>
+                            <Image
+                                source={{ uri: user?.avatar || 'https://i.pravatar.cc/300' }}
+                                style={styles.avatar}
                             />
-
-                            <Text style={styles.label}>Biografía</Text>
-                            <TextInput
-                                value={bio}
-                                onChangeText={setBio}
-                                style={[styles.textInput, { height: 80, textAlignVertical: 'top' }]}
-                                multiline
-                                placeholder="Cuéntanos sobre ti..."
-                                placeholderTextColor="#666"
-                            />
-
-                            <View style={styles.modalActions}>
-                                <TouchableOpacity style={styles.cancelBtn} onPress={() => setIsEditing(false)}>
-                                    <Text style={{ color: 'white' }}>Cancelar</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
-                                    <Text style={{ color: 'white', fontWeight: 'bold' }}>Guardar</Text>
-                                </TouchableOpacity>
+                            {/* VIP Badge Mockup */}
+                            <View style={styles.vipBadge}>
+                                <Text style={styles.vipText}>VIP 1</Text>
                             </View>
                         </View>
-                    </View>
-                </Modal>
 
-                {/* Daily Tasks (Gamification) */}
-                <View style={styles.taskSection}>
-                    <View style={styles.taskHeader}>
-                        <Text style={styles.sectionTitle}>Daily Tasks</Text>
-                        <Text style={styles.seeAll}>See All</Text>
+                        <View style={styles.statsContainer}>
+                            <StatBox value="121" label="Seguidos" />
+                            <StatBox value="13.5K" label="Seguidores" />
+                            <StatBox value="3.7K" label="Clasificación" />
+                        </View>
                     </View>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.taskList}>
-                        <TaskCard title="Check-in" reward="+20 Exp" icon="calendar" done />
-                        <TaskCard title="Sing 1 Song" reward="+50 Exp" icon="mic" />
-                        <TaskCard title="Send Gift" reward="+10 Gold" icon="gift" />
-                    </ScrollView>
+
+                    <View style={styles.nameSection}>
+                        <Text style={styles.username}>{user?.name || 'Usuario'}</Text>
+                        <View style={styles.idRow}>
+                            <Text style={styles.userId}>ID: {user?.id?.substring(0, 10) || '13323708085'}</Text>
+                            <TouchableOpacity>
+                                <Ionicons name="copy-outline" size={14} color={COLORS.textMuted} style={{ marginLeft: 5 }} />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+
+                    {/* Tags / Badges Row */}
+                    <View style={styles.tagsRow}>
+                        <TagBadge text="♂ Escorpio" color="#89CFF0" icon="male" />
+                        <TagBadge text="Cantante verificado" color="#FFA500" icon="checkmark-circle" />
+                        <TagBadge text="Nvl. 56" color="#FF69B4" />
+                    </View>
+
+                    <Text style={styles.bioText} numberOfLines={2}>
+                        {user?.bio || 'Sin firma...'}
+                    </Text>
+
+                    {/* Action Buttons */}
+                    <View style={styles.actionButtonsRow}>
+                        <TouchableOpacity
+                            style={styles.editProfileBtn}
+                            onPress={() => navigation.navigate('EditProfile')}
+                        >
+                            <Text style={styles.editProfileText}>Editar perfil</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.friendBtn}>
+                            <Ionicons name="people" size={20} color="white" />
+                            <Text style={styles.friendBtnText}>Amigos</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Gifts Banner Mockup */}
+                    <View style={styles.giftBanner}>
+                        <LinearGradient
+                            colors={['#FFF5E6', '#FFFFFF']}
+                            start={[0, 0]} end={[1, 0]}
+                            style={styles.giftGradient}
+                        >
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                <Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/6609/6609059.png' }} style={{ width: 30, height: 30, marginRight: 10 }} />
+                                <View>
+                                    <Text style={styles.giftTitle}>Reclama monedas cada semana</Text>
+                                    <Text style={styles.giftSubtitle}>Familia SingSoul</Text>
+                                </View>
+                            </View>
+                            <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
+                        </LinearGradient>
+                    </View>
                 </View>
 
                 {/* Content Tabs */}
@@ -122,7 +117,7 @@ const ProfileScreen = () => {
                     {TABS.map(tab => (
                         <TouchableOpacity
                             key={tab}
-                            style={[styles.tab, activeTab === tab && styles.activeTab]}
+                            style={styles.tab}
                             onPress={() => setActiveTab(tab)}
                         >
                             <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>{tab}</Text>
@@ -133,113 +128,120 @@ const ProfileScreen = () => {
 
                 {/* Grid Content */}
                 <View style={styles.contentGrid}>
-                    <CoverItem title="Despacito" plays="5.4k" />
-                    <CoverItem title="Shape of You" plays="2.1k" />
-                    <CoverItem title="My Way" plays="10k" />
-                    <CoverItem title="Draft" plays="0" isDraft />
+                    <CoverItem title="Despacito - Remix" plays="5.4k" date="Hace 2 días" />
+                    <CoverItem title="Shape of You" plays="2.1k" date="Hace 1 sem" />
+                    <CoverItem title="My Way" plays="10k" date="Hace 2 sem" />
                 </View>
 
             </ScrollView>
-        </SafeAreaView>
+        </View>
     );
 };
 
-const StatItem = ({ value, label }) => (
-    <View style={styles.statItem}>
+const StatBox = ({ value, label }) => (
+    <View style={styles.statBox}>
         <Text style={styles.statValue}>{value}</Text>
         <Text style={styles.statLabel}>{label}</Text>
     </View>
 );
 
-const TaskCard = ({ title, reward, icon, done }) => (
-    <LinearGradient
-        colors={done ? ['#333', '#444'] : ['#2A2A2A', '#333']}
-        style={[styles.taskCard, done && { opacity: 0.6 }]}
-    >
-        <Ionicons name={icon} size={24} color={done ? '#888' : COLORS.accent} />
-        <View>
-            <Text style={styles.taskTitle}>{title}</Text>
-            <Text style={styles.taskReward}>{reward}</Text>
-        </View>
-        {done && <Ionicons name="checkmark-circle" size={16} color="#4CAF50" style={{ position: 'absolute', top: 5, right: 5 }} />}
-    </LinearGradient>
+const TagBadge = ({ text, color, icon }) => (
+    <View style={[styles.tagBadge, { backgroundColor: color + '20' }]}>
+        {icon && <Ionicons name={icon} size={10} color={color} style={{ marginRight: 4 }} />}
+        <Text style={[styles.tagText, { color: color }]}>{text}</Text>
+    </View>
 );
 
-const CoverItem = ({ title, plays, isDraft }) => (
+const CoverItem = ({ title, plays, date }) => (
     <View style={styles.coverItem}>
-        <Image source={{ uri: `https://via.placeholder.com/150?text=${title}` }} style={styles.coverImage} />
-        <View style={styles.coverInfo}>
-            <Text style={styles.coverTitle}>{title}</Text>
-            {isDraft ? (
-                <Text style={{ color: 'orange', fontSize: 10 }}>Draft</Text>
-            ) : (
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Ionicons name="play" size={10} color="#ccc" />
-                    <Text style={styles.coverPlays}>{plays}</Text>
-                </View>
-            )}
+        <Image source={{ uri: `https://via.placeholder.com/300?text=${title}` }} style={styles.coverImage} />
+        <View style={styles.coverOverlay}>
+            <View style={styles.playCountBadge}>
+                <Ionicons name="play" size={10} color="white" />
+                <Text style={styles.playCountText}>{plays}</Text>
+            </View>
         </View>
-        <View style={styles.rankBadge}>
-            <Text style={{ color: 'white', fontSize: 8, fontWeight: 'bold' }}>SS</Text>
-        </View>
+        <Text style={styles.coverTitle} numberOfLines={1}>{title}</Text>
+        <Text style={styles.coverDate}>{date}</Text>
     </View>
 );
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: COLORS.background },
-    header: { flexDirection: 'row', justifyContent: 'space-between', padding: 15, alignItems: 'center' },
-    headerTitle: { color: 'white', fontSize: 18, fontWeight: 'bold' },
+    container: { flex: 1, backgroundColor: 'white' },
+    headerSafeArea: { backgroundColor: 'white' },
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 15,
+        paddingVertical: 10,
+    },
+    headerRight: { flexDirection: 'row' },
+    iconBtn: { marginLeft: 15 },
+
     scrollContent: { paddingBottom: 80 },
-    profileCard: { alignItems: 'center', marginTop: 10 },
-    avatarContainer: { marginBottom: 10 },
-    avatar: { width: 100, height: 100, borderRadius: 50, borderWidth: 3, borderColor: COLORS.surfaceLight },
-    vipBadge: { position: 'absolute', bottom: 0, right: 0, overflow: 'hidden', borderRadius: 10 },
-    vipGradient: { paddingHorizontal: 8, paddingVertical: 2 },
-    vipText: { fontSize: 10, fontWeight: 'bold', color: '#5D4037' },
-    username: { color: 'white', fontSize: 22, fontWeight: 'bold' },
-    userId: { color: COLORS.textMuted, fontSize: 12, marginBottom: 15 },
-    bioText: { color: '#ccc', textAlign: 'center', marginHorizontal: 40, fontSize: 14, marginBottom: 10 },
-    statsRow: { flexDirection: 'row', justifyContent: 'space-around', width: '100%', marginBottom: 20 },
+    profileSection: { paddingHorizontal: 20 },
 
-    // Modal Edit Styles
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', padding: 20 },
-    modalContent: { backgroundColor: COLORS.surface, borderRadius: 20, padding: 25 },
-    modalHeader: { color: 'white', fontSize: 20, fontWeight: 'bold', marginBottom: 20 },
-    label: { color: COLORS.textMuted, fontSize: 12, marginBottom: 5, marginTop: 15 },
-    textInput: { backgroundColor: COLORS.surfaceLight, borderRadius: 10, padding: 12, color: 'white', fontSize: 16 },
-    modalActions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 30 },
-    cancelBtn: { padding: 10, marginRight: 20 },
-    saveBtn: { backgroundColor: COLORS.primary, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10 },
+    userInfoRow: { flexDirection: 'row', alignItems: 'center', marginTop: 10 },
+    avatarContainer: { marginRight: 20 },
+    avatar: { width: 80, height: 80, borderRadius: 40, borderWidth: 1, borderColor: '#eee' },
+    vipBadge: {
+        position: 'absolute', bottom: -5, left: 20, right: 20,
+        backgroundColor: '#4169E1', borderRadius: 10, alignItems: 'center', paddingVertical: 2
+    },
+    vipText: { color: 'white', fontSize: 10, fontWeight: 'bold' },
 
-    statItem: { alignItems: 'center' },
-    statValue: { color: 'white', fontSize: 18, fontWeight: 'bold' },
-    statLabel: { color: COLORS.textMuted, fontSize: 12 },
-    editBtn: { paddingVertical: 8, paddingHorizontal: 30, borderRadius: 20 },
-    editBtnText: { color: 'white', fontWeight: 'bold' },
+    statsContainer: { flex: 1, flexDirection: 'row', justifyContent: 'space-around' },
+    statBox: { alignItems: 'center' },
+    statValue: { fontSize: 18, fontWeight: 'bold', color: COLORS.text },
+    statLabel: { fontSize: 12, color: COLORS.textMuted },
 
-    taskSection: { marginTop: 20, paddingHorizontal: 15 },
-    taskHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-    sectionTitle: { color: 'white', fontSize: 16, fontWeight: 'bold' },
-    seeAll: { color: COLORS.textMuted, fontSize: 12 },
-    taskList: { flexDirection: 'row' },
-    taskCard: { width: 120, height: 60, borderRadius: 10, marginRight: 10, padding: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    taskTitle: { color: 'white', fontSize: 12, fontWeight: 'bold' },
-    taskReward: { color: COLORS.accent, fontSize: 10 },
+    nameSection: { marginTop: 15 },
+    username: { fontSize: 22, fontWeight: 'bold', color: COLORS.text },
+    idRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
+    userId: { fontSize: 12, color: COLORS.textMuted },
 
-    tabBar: { flexDirection: 'row', marginTop: 20, borderBottomWidth: 1, borderBottomColor: '#222' },
-    tab: { flex: 1, alignItems: 'center', paddingVertical: 10 },
-    activeTab: {},
-    tabText: { color: COLORS.textMuted, fontSize: 14, fontWeight: '600' },
-    activeTabText: { color: 'white' },
-    tabIndicator: { position: 'absolute', bottom: -1, width: 20, height: 3, backgroundColor: COLORS.accent, borderRadius: 2 },
+    tagsRow: { flexDirection: 'row', marginTop: 10, flexWrap: 'wrap', gap: 8 },
+    tagBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
+    tagText: { fontSize: 10, fontWeight: 'bold' },
 
-    contentGrid: { flexDirection: 'row', flexWrap: 'wrap', padding: 10 },
-    coverItem: { width: '48%', margin: '1%', marginBottom: 10, borderRadius: 10, overflow: 'hidden', backgroundColor: COLORS.surface },
-    coverImage: { width: '100%', height: 150 },
-    coverInfo: { padding: 8 },
-    coverTitle: { color: 'white', fontSize: 14, fontWeight: 'bold' },
-    coverPlays: { color: '#ccc', fontSize: 10, marginLeft: 3 },
-    rankBadge: { position: 'absolute', top: 5, left: 5, backgroundColor: 'rgba(0,0,0,0.6)', padding: 3, borderRadius: 4, borderWidth: 1, borderColor: COLORS.accent },
+    bioText: { marginTop: 12, fontSize: 14, color: COLORS.textSecondary, lineHeight: 20 },
+
+    actionButtonsRow: { flexDirection: 'row', marginTop: 20, gap: 10 },
+    editProfileBtn: {
+        flex: 1, paddingVertical: 8, borderRadius: 20,
+        backgroundColor: '#F2F2F7', alignItems: 'center',
+        borderWidth: 1, borderColor: '#E5E5EA'
+    },
+    editProfileText: { color: COLORS.text, fontWeight: '600' },
+    friendBtn: {
+        width: 100, paddingVertical: 8, borderRadius: 20,
+        backgroundColor: '#404040', alignItems: 'center',
+        flexDirection: 'row', justifyContent: 'center', gap: 5
+    },
+    friendBtnText: { color: 'white', fontWeight: 'bold' },
+
+    giftBanner: { marginTop: 20, borderRadius: 15, overflow: 'hidden' },
+    giftGradient: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 15 },
+    giftTitle: { fontSize: 14, fontWeight: 'bold', color: '#D97706' },
+    giftSubtitle: { fontSize: 12, color: '#F59E0B' },
+
+    // Tabs
+    tabBar: { flexDirection: 'row', marginTop: 20, borderBottomWidth: 1, borderBottomColor: '#F2F2F7' },
+    tab: { marginRight: 25, paddingVertical: 10, alignItems: 'center' },
+    tabText: { fontSize: 16, color: COLORS.textMuted, fontWeight: '600' },
+    activeTabText: { color: COLORS.text, fontSize: 18 },
+    tabIndicator: { position: 'absolute', bottom: -1, width: 20, height: 3, backgroundColor: COLORS.primary, borderRadius: 2 },
+
+    // Grid
+    contentGrid: { flexDirection: 'row', flexWrap: 'wrap', padding: 5, paddingBottom: 50 },
+    coverItem: { width: width / 3 - 10, margin: 5, marginBottom: 15 },
+    coverImage: { width: '100%', height: 120, borderRadius: 10, backgroundColor: '#eee' },
+    coverOverlay: { position: 'absolute', bottom: 40, left: 5 },
+    playCountBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8 },
+    playCountText: { color: 'white', fontSize: 10, marginLeft: 2 },
+    coverTitle: { fontSize: 12, fontWeight: '600', marginTop: 5, color: COLORS.text },
+    coverDate: { fontSize: 10, color: COLORS.textMuted, marginTop: 1 },
 });
 
 export default ProfileScreen;

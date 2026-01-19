@@ -18,6 +18,8 @@ import ManualSyncScreen from './src/screens/ManualSyncScreen';
 import RoomDetailScreen from './src/screens/RoomDetailScreen';
 import GroupsScreen from './src/screens/GroupsScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
+import SettingsScreen from './src/screens/SettingsScreen';
+import EditProfileScreen from './src/screens/EditProfileScreen';
 import MainTabNavigator from './src/navigation/MainTabNavigator';
 // We import COLORS but use local fallback for critical startup UI
 import { COLORS } from './src/theme/colors';
@@ -53,6 +55,8 @@ const linking = {
       RoomDetail: 'room/:id',
       Groups: 'groups',
       AdminDashboard: 'admin',
+      EditProfile: 'edit-profile',
+      Settings: 'settings',
     },
   },
 };
@@ -126,6 +130,8 @@ const AppContent = () => {
           <Stack.Screen name="ManualSync" component={ManualSyncScreen} />
           <Stack.Screen name="RoomDetail" component={RoomDetailScreen} />
           <Stack.Screen name="Groups" component={GroupsScreen} />
+          <Stack.Screen name="Settings" component={SettingsScreen} />
+          <Stack.Screen name="EditProfile" component={EditProfileScreen} />
         </Stack.Navigator>
       ) : (
         <Stack.Navigator screenOptions={{ headerShown: false }}>
