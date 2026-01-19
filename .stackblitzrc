@@ -1,0 +1,8 @@
+{
+  "installCommand": "npm install --legacy-peer-deps",
+  "startCommand": "CI=1 npx expo start --web",
+  "env": {
+    "NODE_VERSION": "18",
+    "NODE_OPTIONS": "--no-warnings"
+  }
+}
