@@ -32,7 +32,7 @@ const linking = {
   prefixes: [prefix, 'https://manuelubianvillarreal-lab.github.io/SingSoulStar-App'],
   config: {
     screens: {
-      Login: '',
+      Login: 'login',
       Register: 'register',
       MainTabs: {
         screens: {
