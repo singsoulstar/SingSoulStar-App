@@ -147,10 +147,11 @@ export const SongService = {
 
     parseLrc: (lrcContent) => {
         if (!lrcContent) return [];
-        const lines = lrcContent.split(/\r?\n/); // Handle different line endings
+        const lines = lrcContent.split(/\r?\n/);
         const lyrics = [];
-        // More permissive regex: [00:00.00] or [00:00:00] or [0:00.00]
         const timeRegex = /\[(\d{1,2}):(\d{2})[.:](\d{2,3})\]/;
+
+        let currentSinger = 'Both';
 
         lines.forEach(line => {
             const match = timeRegex.exec(line);
@@ -159,15 +160,26 @@ export const SongService = {
                 const seconds = parseInt(match[2], 10);
                 const milliseconds = parseInt(match[3].padEnd(3, '0'), 10);
                 const time = (minutes * 60 * 1000) + (seconds * 1000) + milliseconds;
-                const text = line.replace(timeRegex, '').trim();
+                let text = line.replace(timeRegex, '').trim();
+
+                // Detect Singer change: [A:], [B:], [Both:], [A/B:]
+                if (text.startsWith('[A:]')) {
+                    currentSinger = 'A';
+                    text = text.replace('[A:]', '').trim();
+                } else if (text.startsWith('[B:]')) {
+                    currentSinger = 'B';
+                    text = text.replace('[B:]', '').trim();
+                } else if (text.startsWith('[Both:]') || text.startsWith('[A/B:]')) {
+                    currentSinger = 'Both';
+                    text = text.replace(/\[(Both|A\/B):\]/, '').trim();
+                }
 
                 if (text) {
-                    lyrics.push({ time, text, singer: 'Both' });
+                    lyrics.push({ time, text, singer: currentSinger });
                 }
             }
         });
 
-        // Sort by time just in case
         return lyrics.sort((a, b) => a.time - b.time);
     }
 };

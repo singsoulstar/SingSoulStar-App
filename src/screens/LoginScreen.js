@@ -29,15 +29,6 @@ const LoginScreen = ({ navigation }) => {
     return (
         <View style={styles.container}>
             <StatusBar style="dark" />
-            <ImageBackground
-                source={{ uri: 'https://images.unsplash.com/photo-1516280440614-6697288d5d38?q=80&w=1000' }}
-                style={styles.backgroundImage}
-            >
-                <LinearGradient
-                    colors={['rgba(255,255,255,0.1)', COLORS.background]}
-                    style={StyleSheet.absoluteFill}
-                />
-            </ImageBackground>
 
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -45,9 +36,12 @@ const LoginScreen = ({ navigation }) => {
             >
                 <ScrollView contentContainerStyle={styles.scrollContent}>
                     <View style={styles.header}>
-                        <IconLogo />
-                        <Text style={styles.title}>SingSoulStar</Text>
-                        <Text style={styles.subtitle}>Sing your heart out!</Text>
+                        <Image
+                            source={require('../../assets/logo.png')}
+                            style={styles.logoImage}
+                            resizeMode="contain"
+                        />
+                        {/* Title removed as it's in the logo, or we can keep it small/hidden if logo has text */}
                     </View>
 
                     <View style={styles.form}>
@@ -127,16 +121,7 @@ const LoginScreen = ({ navigation }) => {
     );
 };
 
-const IconLogo = () => (
-    <View style={styles.logoCircle}>
-        <LinearGradient
-            colors={GRADIENTS.singButton}
-            style={styles.logoGradient}
-        >
-            <Ionicons name="mic" size={40} color="white" />
-        </LinearGradient>
-    </View>
-);
+// Removed IconLogo as we use an asset image now.
 
 const SocialButton = ({ icon, color }) => (
     <TouchableOpacity style={styles.socialBtn}>
@@ -146,12 +131,14 @@ const SocialButton = ({ icon, color }) => (
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: COLORS.background },
-    backgroundImage: { width, height: height * 0.5, position: 'absolute', top: 0, opacity: 0.1 }, // Faded background for light theme
+    // backgroundImage removed
     content: { flex: 1 },
     scrollContent: { flexGrow: 1, justifyContent: 'center', padding: 30 },
     header: { alignItems: 'center', marginBottom: 40, marginTop: 60 },
-    logoCircle: { marginBottom: 15, elevation: 10, shadowColor: COLORS.primary, shadowOpacity: 0.3, shadowRadius: 10 },
-    logoGradient: { width: 80, height: 80, borderRadius: 40, justifyContent: 'center', alignItems: 'center' },
+    logoImage: { width: 250, height: 250, marginBottom: 20 },
+    // Title and subtitle styles kept just in case, or remove if unused in JSX
+    title: { color: COLORS.text, fontSize: 32, fontWeight: 'bold' },
+    subtitle: { color: COLORS.textSecondary, fontSize: 16, marginTop: 5 },
     title: { color: COLORS.text, fontSize: 32, fontWeight: 'bold' },
     subtitle: { color: COLORS.textSecondary, fontSize: 16, marginTop: 5 },
     form: { backgroundColor: COLORS.surface, borderRadius: 20, padding: 20, elevation: 2, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 },

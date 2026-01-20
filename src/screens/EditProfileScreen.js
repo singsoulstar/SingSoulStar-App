@@ -1,175 +1,161 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, TextInput, Alert, Modal, Platform } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Alert, Image, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS } from '../theme/colors';
+import { COLORS, GRADIENTS } from '../theme/colors';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
-import { StatusBar } from 'expo-status-bar';
+import * as ImagePicker from 'expo-image-picker';
+import { supabase } from '../lib/supabase';
 
 const EditProfileScreen = ({ navigation }) => {
     const { user, updateProfile } = useAuth();
+    const [loading, setLoading] = useState(false);
 
     // Form State
     const [name, setName] = useState(user?.name || '');
-    const [gender, setGender] = useState(user?.gender || 'Secreto');
-    const [birthday, setBirthday] = useState(user?.birthday || '11.12 Escorpio'); // Mock default if empty
-    const [relationship, setRelationship] = useState(user?.relationship || 'Secreto');
-    const [hometown, setHometown] = useState(user?.hometown || 'Cerca de Shibuya');
     const [bio, setBio] = useState(user?.bio || '');
-    const [education, setEducation] = useState(user?.education || '');
+    const [gender, setGender] = useState(user?.gender || '');
+    const [hometown, setHometown] = useState(user?.hometown || '');
     const [profession, setProfession] = useState(user?.profession || '');
+    const [avatarUrl, setAvatarUrl] = useState(user?.avatar || null);
+    const [newAvatarUri, setNewAvatarUri] = useState(null);
 
-    // Modals for editing single fields
-    const [modalVisible, setModalVisible] = useState(false);
-    const [currentField, setCurrentField] = useState(null); // 'name', 'bio', etc.
-    const [tempValue, setTempValue] = useState('');
+    const pickImage = async () => {
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.5,
+        });
 
-    const openEdit = (field, currentValue) => {
-        setCurrentField(field);
-        setTempValue(currentValue);
-        setModalVisible(true);
+        if (!result.canceled) {
+            setNewAvatarUri(result.assets[0].uri);
+        }
     };
 
-    const saveField = async () => {
-        const updates = {};
-        updates[currentField] = tempValue;
+    const handleSave = async () => {
+        setLoading(true);
+        try {
+            let infoToUpdate = {
+                name,
+                bio,
+                gender,
+                hometown,
+                profession
+            };
 
-        // Optimistic UI update
-        if (currentField === 'name') setName(tempValue);
-        if (currentField === 'bio') setBio(tempValue);
-        if (currentField === 'education') setEducation(tempValue);
-        if (currentField === 'profession') setProfession(tempValue);
+            // Avatar Upload Logic
+            if (newAvatarUri) {
+                const response = await fetch(newAvatarUri);
+                const blob = await response.blob();
+                const fileExt = newAvatarUri.split('.').pop();
+                const fileName = `${user.id}_${Date.now()}.${fileExt}`;
+                const filePath = `avatars/${fileName}`;
 
-        // Persist
-        await updateProfile(updates);
-        setModalVisible(false);
+                const { error: uploadError } = await supabase.storage
+                    .from('singsoulstar-assets')
+                    .upload(filePath, blob, { contentType: blob.type });
+
+                if (uploadError) throw uploadError;
+
+                const { data: { publicUrl } } = supabase.storage
+                    .from('singsoulstar-assets')
+                    .getPublicUrl(filePath);
+
+                infoToUpdate.avatar = publicUrl;
+            }
+
+            // Update Auth Metadata (and Profile table via Trigger ideally, but here simulated via Auth update)
+            const success = await updateProfile(infoToUpdate);
+            if (success) {
+                Alert.alert("¡Éxito!", "Perfil actualizado correctamente.");
+                navigation.goBack();
+            } else {
+                Alert.alert("Error", "No se pudo actualizar el perfil.");
+            }
+
+        } catch (error) {
+            console.error("Save Profile Error:", error);
+            Alert.alert("Error", "Falló la subida de datos.");
+        } finally {
+            setLoading(false);
+        }
     };
-
-    const ListItem = ({ label, value, onPress, isAvatar }) => (
-        <TouchableOpacity style={styles.itemContainer} onPress={onPress}>
-            <Text style={styles.label}>{label}</Text>
-            <View style={styles.valueContainer}>
-                {isAvatar ? (
-                    <Image source={{ uri: user?.avatar || 'https://i.pravatar.cc/300' }} style={styles.avatarMini} />
-                ) : (
-                    <Text style={styles.value} numberOfLines={1}>{value}</Text>
-                )}
-                <Ionicons name="chevron-forward" size={20} color={COLORS.textMuted} />
-            </View>
-        </TouchableOpacity>
-    );
 
     return (
-        <View style={styles.container}>
-            <StatusBar style="dark" />
-
-            {/* Header */}
+        <SafeAreaView style={styles.container}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                    <Ionicons name="chevron-back" size={28} color={COLORS.text} />
+                    <Ionicons name="arrow-back" size={24} color="white" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Editar perfil</Text>
-                <TouchableOpacity onPress={() => navigation.goBack()}>
-                    {/* Could be a Save button, but StarMaker usually saves on field exit or has generic back */}
+                <Text style={styles.headerTitle}>Editar Perfil</Text>
+                <TouchableOpacity onPress={handleSave} disabled={loading}>
+                    {loading ? <ActivityIndicator color={COLORS.accent} /> : <Text style={styles.saveText}>Guardar</Text>}
                 </TouchableOpacity>
             </View>
 
-            <ScrollView contentContainerStyle={styles.scrollContent}>
-
-                {/* Big Avatar Header */}
-                <View style={styles.avatarHeader}>
-                    <TouchableOpacity style={styles.avatarWrapper} onPress={() => Alert.alert('Cambiar Avatar', 'Pronto podrás subir tu foto aquí.')}>
-                        <Image source={{ uri: user?.avatar || 'https://i.pravatar.cc/300' }} style={styles.avatarBig} />
+            <ScrollView contentContainerStyle={styles.content}>
+                <View style={styles.avatarSection}>
+                    <TouchableOpacity onPress={pickImage} style={styles.avatarWrapper}>
+                        <Image source={{ uri: newAvatarUri || avatarUrl || 'https://via.placeholder.com/150' }} style={styles.avatar} />
                         <View style={styles.cameraIcon}>
-                            <Ionicons name="camera" size={16} color="white" />
+                            <Ionicons name="camera" size={20} color="white" />
                         </View>
                     </TouchableOpacity>
-                    <Text style={styles.changeAvatarText}>Presiona aquí para cambiar el avatar</Text>
+                    <Text style={styles.changePhotoText}>Cambiar Foto</Text>
                 </View>
 
-                {/* Fields */}
-                <View style={styles.listContainer}>
-                    <ListItem label="Nombre de usuario" value={name} onPress={() => openEdit('name', name)} />
-                    <ListItem label="ID" value={user?.id?.substring(0, 10) || 'Unknown'} onPress={() => Alert.alert('ID', 'Tu ID es único y no se puede cambiar.')} />
-                    <ListItem label="Sexo" value={gender} onPress={() => Alert.alert('Sexo', 'Selector de género (Próximamente)')} />
-                    <ListItem label="Cumpleaños" value={birthday} onPress={() => Alert.alert('Cumpleaños', 'Selector de fecha (Próximamente)')} />
-                    <ListItem label="Relación" value={relationship} onPress={() => Alert.alert('Relación', 'Selector de estado (Próximamente)')} />
-                    <ListItem label="Ciudad natal" value={hometown} onPress={() => openEdit('hometown', hometown)} />
-                    <ListItem label="Origen Étnico" value="Selecciona tu origen étnico" />
-                    <ListItem label="Firma" value={bio || "Sin firma"} onPress={() => openEdit('bio', bio)} />
-                    <ListItem label="Educación" value={education || "Ingresa tu formación educativa"} onPress={() => openEdit('education', education)} />
-                    <ListItem label="Profesión" value={profession || "Ingresa tu profesión"} onPress={() => openEdit('profession', profession)} />
+                <View style={styles.formElement}>
+                    <Text style={styles.label}>Nombre de Usuario</Text>
+                    <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Tu nombre artístico" placeholderTextColor="#666" />
+                </View>
+
+                <View style={styles.formElement}>
+                    <Text style={styles.label}>Biografía</Text>
+                    <TextInput style={[styles.input, styles.textArea]} value={bio} onChangeText={setBio} multiline placeholder="Cuéntanos sobre ti..." placeholderTextColor="#666" />
+                </View>
+
+                <View style={styles.row}>
+                    <View style={[styles.formElement, { flex: 1, marginRight: 10 }]}>
+                        <Text style={styles.label}>Género</Text>
+                        <TextInput style={styles.input} value={gender} onChangeText={setGender} placeholder="H/M/Otro" placeholderTextColor="#666" />
+                    </View>
+                    <View style={[styles.formElement, { flex: 1 }]}>
+                        <Text style={styles.label}>Ciudad</Text>
+                        <TextInput style={styles.input} value={hometown} onChangeText={setHometown} placeholder="Tu ciudad" placeholderTextColor="#666" />
+                    </View>
+                </View>
+
+                <View style={styles.formElement}>
+                    <Text style={styles.label}>Profesión</Text>
+                    <TextInput style={styles.input} value={profession} onChangeText={setProfession} placeholder="¿A qué te dedicas?" placeholderTextColor="#666" />
                 </View>
 
             </ScrollView>
-
-            {/* Simple Edit Input Modal */}
-            <Modal visible={modalVisible} animationType="fade" transparent={true}>
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalCard}>
-                        <Text style={styles.modalTitle}>Editar {currentField}</Text>
-                        <TextInput
-                            style={styles.modalInput}
-                            value={tempValue}
-                            onChangeText={setTempValue}
-                            autoFocus
-                        />
-                        <View style={styles.modalActions}>
-                            <TouchableOpacity style={styles.modalBtnCancel} onPress={() => setModalVisible(false)}>
-                                <Text style={styles.btnTextCancel}>Cancelar</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.modalBtnSave} onPress={saveField}>
-                                <Text style={styles.btnTextSave}>Guardar</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            </Modal>
-        </View>
+        </SafeAreaView>
     );
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F9F9F9' },
-    header: {
-        height: 100,
-        paddingTop: 50,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 15,
-        backgroundColor: 'white',
-    },
-    headerTitle: { fontSize: 18, fontWeight: 'bold' },
-    scrollContent: { paddingBottom: 50 },
+    container: { flex: 1, backgroundColor: COLORS.background },
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 15, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.1)' },
+    headerTitle: { color: 'white', fontSize: 18, fontWeight: 'bold' },
+    backBtn: { padding: 5 },
+    saveText: { color: COLORS.accent, fontSize: 16, fontWeight: 'bold' },
 
-    avatarHeader: { alignItems: 'center', backgroundColor: 'white', paddingBottom: 20, marginBottom: 10 },
+    content: { padding: 20 },
+    avatarSection: { alignItems: 'center', marginBottom: 30 },
     avatarWrapper: { position: 'relative' },
-    avatarBig: { width: 80, height: 80, borderRadius: 40 },
-    cameraIcon: { position: 'absolute', bottom: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.6)', padding: 4, borderRadius: 12 },
-    changeAvatarText: { color: COLORS.textMuted, fontSize: 12, marginTop: 10 },
+    avatar: { width: 100, height: 100, borderRadius: 50, borderWidth: 2, borderColor: COLORS.primary },
+    cameraIcon: { position: 'absolute', bottom: 0, right: 0, backgroundColor: COLORS.accent, padding: 8, borderRadius: 20 },
+    changePhotoText: { color: COLORS.accent, marginTop: 10, fontSize: 14 },
 
-    listContainer: { backgroundColor: 'white' },
-    itemContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: 15,
-        borderBottomWidth: 1,
-        borderBottomColor: '#F0F0F0'
-    },
-    label: { fontSize: 16, color: 'black', fontWeight: '500' },
-    valueContainer: { flexDirection: 'row', alignItems: 'center', flex: 1, justifyContent: 'flex-end', marginLeft: 20 },
-    value: { color: '#888', fontSize: 14, marginRight: 5, textAlign: 'right' },
-    avatarMini: { width: 30, height: 30, borderRadius: 15, marginRight: 5 },
-
-    // Modal
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 30 },
-    modalCard: { backgroundColor: 'white', borderRadius: 15, padding: 20 },
-    modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 15, textTransform: 'capitalize' },
-    modalInput: { borderBottomWidth: 1, borderColor: COLORS.primary, fontSize: 16, padding: 5, marginBottom: 20 },
-    modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 15 },
-    btnTextCancel: { color: '#666', fontSize: 16 },
-    btnTextSave: { color: COLORS.primary, fontSize: 16, fontWeight: 'bold' }
+    formElement: { marginBottom: 20 },
+    label: { color: '#888', marginBottom: 5, fontSize: 12, textTransform: 'uppercase' },
+    input: { backgroundColor: COLORS.surface, color: 'white', padding: 15, borderRadius: 10, fontSize: 16 },
+    textArea: { height: 100, textAlignVertical: 'top' },
+    row: { flexDirection: 'row' }
 });
 
 export default EditProfileScreen;

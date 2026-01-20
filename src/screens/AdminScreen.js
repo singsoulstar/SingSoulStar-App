@@ -14,111 +14,101 @@ const MOCK_USERS = [
 ];
 
 const AdminScreen = ({ navigation }) => {
-    const { logout } = useAuth();
-    const [activeTab, setActiveTab] = useState('Users'); // 'Users' or 'Content'
-    const [users, setUsers] = useState(MOCK_USERS);
-    const [pendingSongs, setPendingSongs] = useState([]);
+    const { user, logout } = useAuth(); // Current Admin User
+    const [activeTab, setActiveTab] = useState('Users');
+    const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(false);
 
     // User Modal State
     const [selectedUser, setSelectedUser] = useState(null);
     const [modalVisible, setModalVisible] = useState(false);
-    const [isAssistant, setIsAssistant] = useState(false);
-    const [permChat, setPermChat] = useState(false);
-    const [permSongs, setPermSongs] = useState(false);
-    const [permBan, setPermBan] = useState(false);
+
+    // Form States
+    const [targetRole, setTargetRole] = useState('user');
+    const [isVerified, setIsVerified] = useState(false);
 
     useEffect(() => {
-        if (activeTab === 'Content') {
-            loadPendingSongs();
+        if (activeTab === 'Users') {
+            fetchUsers();
+        } else {
+            // loadPendingSongs (Existing logic - kept for now)
         }
     }, [activeTab]);
 
-    const loadPendingSongs = async () => {
+    const fetchUsers = async () => {
         setLoading(true);
         try {
-            const data = await AsyncStorage.getItem('user_songs');
-            if (data) {
-                const songs = JSON.parse(data);
-                setPendingSongs(songs.filter(s => s.status === 'pending_review'));
-            } else {
-                setPendingSongs([]);
-            }
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .order('updated_at', { ascending: false })
+                .limit(50); // Cap for now
+
+            if (error) throw error;
+            setUsers(data || []);
         } catch (e) {
-            console.error(e);
+            console.error("Error fetching users:", e);
+            Alert.alert("Error", "No se pudieron cargar los usuarios.");
         } finally {
             setLoading(false);
         }
     };
 
-    const handleApproveSong = async (songId) => {
-        try {
-            const data = await AsyncStorage.getItem('user_songs');
-            if (data) {
-                const songs = JSON.parse(data);
-                const updated = songs.map(s => s.id === songId ? { ...s, status: 'approved' } : s);
-                await AsyncStorage.setItem('user_songs', JSON.stringify(updated));
-                setPendingSongs(prev => prev.filter(s => s.id !== songId));
-                Alert.alert('Success', 'Song approved and published!');
-            }
-        } catch (e) {
-            Alert.alert('Error', 'Failed to approve song');
-        }
-    };
-
-    const handleRejectSong = async (songId) => {
-        try {
-            const data = await AsyncStorage.getItem('user_songs');
-            if (data) {
-                const songs = JSON.parse(data);
-                const updated = songs.map(s => s.id === songId ? { ...s, status: 'rejected' } : s);
-                await AsyncStorage.setItem('user_songs', JSON.stringify(updated));
-                setPendingSongs(prev => prev.filter(s => s.id !== songId));
-                Alert.alert('Rejected', 'Song has been rejected.');
-            }
-        } catch (e) {
-            Alert.alert('Error', 'Failed to reject song');
-        }
-    };
-
-    const handleUserClick = (user) => {
-        setSelectedUser(user);
-        setIsAssistant(user.role === 'assistant');
-        setPermChat(user.permissions?.includes('moderate_chat') || false);
-        setPermSongs(user.permissions?.includes('approve_songs') || false);
-        setPermBan(user.permissions?.includes('ban_users') || false);
+    const handleUserClick = (u) => {
+        setSelectedUser(u);
+        setTargetRole(u.role || 'user');
+        setIsVerified(u.is_verified || false);
         setModalVisible(true);
     };
 
-    const saveChanges = () => {
-        const updatedUsers = users.map(u => {
-            if (u.id === selectedUser.id) {
-                const newRole = isAssistant ? 'assistant' : 'user';
-                const newPerms = isAssistant ? [
-                    ...(permChat ? ['moderate_chat'] : []),
-                    ...(permSongs ? ['approve_songs'] : []),
-                    ...(permBan ? ['ban_users'] : [])
-                ] : [];
-                return { ...u, role: newRole, permissions: newPerms };
-            }
-            return u;
-        });
-        setUsers(updatedUsers);
-        setModalVisible(false);
-        Alert.alert('Success', `Role updated for ${selectedUser.name}`);
+    const saveChanges = async () => {
+        if (!selectedUser) return;
+
+        try {
+            const updates = {
+                role: targetRole,
+                is_verified: isVerified,
+                updated_at: new Date(),
+            };
+
+            const { error } = await supabase
+                .from('profiles')
+                .update(updates)
+                .eq('id', selectedUser.id);
+
+            if (error) throw error;
+
+            Alert.alert("Éxito", "Usuario actualizado.");
+            setModalVisible(false);
+            fetchUsers(); // Refresh list
+        } catch (e) {
+            console.error("Error updating user:", e);
+            Alert.alert("Error", "No tienes permisos o falló la red.");
+        }
     };
 
     const renderUserItem = ({ item }) => (
         <TouchableOpacity style={styles.card} onPress={() => handleUserClick(item)}>
             <View style={styles.avatarCircle}>
-                <Text style={styles.avatarText}>{item.name[0]}</Text>
+                {item.avatar_url ? (
+                    <Image source={{ uri: item.avatar_url }} style={{ width: 40, height: 40, borderRadius: 20 }} />
+                ) : (
+                    <Text style={styles.avatarText}>{item.username ? item.username[0].toUpperCase() : '?'}</Text>
+                )}
             </View>
             <View style={styles.info}>
-                <Text style={styles.name}>{item.name}</Text>
-                <Text style={styles.subtext}>{item.email}</Text>
+                <Text style={styles.name}>
+                    {item.full_name || item.name || item.username || 'Sin Nombre'}
+                    {item.is_verified && <Ionicons name="checkmark-circle" size={14} color={COLORS.primary} />}
+                </Text>
+                <Text style={styles.subtext}>{item.id.substring(0, 8)}... • {item.role || 'user'}</Text>
             </View>
-            <View style={[styles.badge, item.role === 'assistant' ? styles.badgeAssistant : styles.badgeUser]}>
-                <Text style={styles.badgeText}>{item.role.toUpperCase()}</Text>
+            <View style={[styles.badge,
+            item.role === 'admin' ? styles.badgeAdmin :
+                item.role === 'assistant' ? styles.badgeAssistant :
+                    styles.badgeUser
+            ]}>
+                <Text style={styles.badgeText}>{item.role ? item.role.toUpperCase() : 'USER'}</Text>
             </View>
         </TouchableOpacity>
     );
@@ -183,32 +173,44 @@ const AdminScreen = ({ navigation }) => {
                 />
             )}
 
-            {/* User Edit Modal (existing logic) */}
+            {/* User Edit Modal */}
             <Modal visible={modalVisible} transparent={true} animationType="fade">
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
-                        <Text style={styles.modalHeader}>Manage {selectedUser?.name}</Text>
+                        <Text style={styles.modalHeader}>Gestionar: {selectedUser?.username || selectedUser?.name || 'Usuario'}</Text>
 
                         <View style={styles.switchRow}>
-                            <Text style={styles.label}>Is Assistant?</Text>
-                            <Switch value={isAssistant} onValueChange={setIsAssistant} trackColor={{ true: COLORS.accent }} />
+                            <Text style={styles.label}>Verificado</Text>
+                            <Switch value={isVerified} onValueChange={setIsVerified} trackColor={{ true: COLORS.accent }} />
                         </View>
 
-                        {isAssistant && (
-                            <View style={styles.permsBox}>
-                                <Text style={styles.permTitle}>Permissions</Text>
-                                <View style={styles.switchRow}><Text style={styles.sublabel}>Moderate Chat</Text><Switch value={permChat} onValueChange={setPermChat} /></View>
-                                <View style={styles.switchRow}><Text style={styles.sublabel}>Approve Songs</Text><Switch value={permSongs} onValueChange={setPermSongs} /></View>
-                                <View style={styles.switchRow}><Text style={styles.sublabel}>Ban Users</Text><Switch value={permBan} onValueChange={setPermBan} /></View>
+                        <View style={styles.permsBox}>
+                            <Text style={styles.permTitle}>Rol de Usuario</Text>
+                            <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap' }}>
+                                {['user', 'assistant', 'admin'].map(role => (
+                                    <TouchableOpacity
+                                        key={role}
+                                        style={[
+                                            styles.roleBtn,
+                                            targetRole === role && styles.roleBtnActive
+                                        ]}
+                                        onPress={() => setTargetRole(role)}
+                                    >
+                                        <Text style={[
+                                            styles.roleBtnText,
+                                            targetRole === role && styles.roleBtnTextActive
+                                        ]}>{role.toUpperCase()}</Text>
+                                    </TouchableOpacity>
+                                ))}
                             </View>
-                        )}
+                        </View>
 
                         <View style={styles.modalActions}>
                             <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.cancelBtn}>
-                                <Text style={styles.btnText}>Cancel</Text>
+                                <Text style={styles.btnText}>Cancelar</Text>
                             </TouchableOpacity>
                             <TouchableOpacity onPress={saveChanges} style={styles.saveBtn}>
-                                <Text style={styles.btnText}>Save</Text>
+                                <Text style={styles.btnText}>Guardar</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -230,7 +232,7 @@ const styles = StyleSheet.create({
     dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: COLORS.accent, position: 'absolute', top: 10, right: -10 },
     list: { padding: 20 },
     card: { flexDirection: 'row', backgroundColor: COLORS.surface, padding: 15, borderRadius: 12, marginBottom: 10, alignItems: 'center' },
-    avatarCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
+    avatarCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center', marginRight: 15, overflow: 'hidden' },
     avatarText: { color: 'white', fontWeight: 'bold' },
     info: { flex: 1 },
     name: { color: 'white', fontWeight: 'bold' },
@@ -238,6 +240,7 @@ const styles = StyleSheet.create({
     badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
     badgeUser: { backgroundColor: '#444' },
     badgeAssistant: { backgroundColor: COLORS.primary },
+    badgeAdmin: { backgroundColor: '#FFD700' },
     badgeText: { color: 'white', fontSize: 10, fontWeight: 'bold' },
     actionRow: { flexDirection: 'row' },
     approveBtn: { marginLeft: 15 },
@@ -257,6 +260,11 @@ const styles = StyleSheet.create({
     cancelBtn: { padding: 10, marginRight: 10 },
     saveBtn: { backgroundColor: COLORS.accent, paddingVertical: 10, paddingHorizontal: 25, borderRadius: 20 },
     btnText: { color: 'white', fontWeight: 'bold' },
+
+    roleBtn: { padding: 8, borderRadius: 8, borderWidth: 1, borderColor: '#555', marginBottom: 5 },
+    roleBtnActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+    roleBtnText: { color: '#888', fontSize: 12 },
+    roleBtnTextActive: { color: 'white', fontWeight: 'bold' }
 });
 
 export default AdminScreen;

@@ -6,6 +6,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, GRADIENTS } from '../theme/colors';
 import { useAuth } from '../context/AuthContext';
 import { StatusBar } from 'expo-status-bar';
+import { RecordingService } from '../services/RecordingService';
+import { useFocusEffect } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
 
@@ -13,6 +15,28 @@ const ProfileScreen = ({ navigation }) => {
     const { user, logout } = useAuth();
     const TABS = ['Momentos', 'Covers', 'Duetos'];
     const [activeTab, setActiveTab] = React.useState('Covers');
+    const [recordings, setRecordings] = React.useState([]);
+    const [isLoading, setIsLoading] = React.useState(false);
+
+    useFocusEffect(
+        React.useCallback(() => {
+            if (user?.id) {
+                fetchRecordings();
+            }
+        }, [user?.id])
+    );
+
+    const fetchRecordings = async () => {
+        setIsLoading(true);
+        try {
+            const data = await RecordingService.getUserRecordings(user.id);
+            setRecordings(data);
+        } catch (error) {
+            console.error("Error fetching recordings:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     const handleLogout = async () => {
         if (Platform.OS === 'web') {
@@ -107,6 +131,23 @@ const ProfileScreen = ({ navigation }) => {
                         </TouchableOpacity>
                     </View>
 
+                    {/* Admin Panel Button (Conditioned) */}
+                    {(user?.role === 'admin' || user?.role === 'assistant') && (
+                        <TouchableOpacity
+                            style={styles.adminPanelBtn}
+                            onPress={() => navigation.navigate('AdminDashboard')}
+                        >
+                            <LinearGradient
+                                colors={['#FFD700', '#FFA500']}
+                                start={[0, 0]} end={[1, 0]}
+                                style={styles.adminGradient}
+                            >
+                                <Ionicons name="construct" size={20} color="white" style={{ marginRight: 8 }} />
+                                <Text style={styles.adminText}>Centro de Control (Admin)</Text>
+                            </LinearGradient>
+                        </TouchableOpacity>
+                    )}
+
                     {/* Gifts Banner Mockup */}
                     <View style={styles.giftBanner}>
                         <LinearGradient
@@ -142,9 +183,24 @@ const ProfileScreen = ({ navigation }) => {
 
                 {/* Grid Content */}
                 <View style={styles.contentGrid}>
-                    <CoverItem title="Despacito - Remix" plays="5.4k" date="Hace 2 días" />
-                    <CoverItem title="Shape of You" plays="2.1k" date="Hace 1 sem" />
-                    <CoverItem title="My Way" plays="10k" date="Hace 2 sem" />
+                    {activeTab === 'Covers' && (
+                        <>
+                            {recordings.length === 0 && !isLoading ? (
+                                <View style={styles.emptyState}>
+                                    <Text style={styles.emptyText}>Aún no has grabado covers.</Text>
+                                    <Text style={styles.emptySubText}>¡Ve a cantar y muestra tu talento!</Text>
+                                </View>
+                            ) : (
+                                recordings.map((item) => (
+                                    <CoverItem
+                                        key={item.id}
+                                        item={item}
+                                    />
+                                ))
+                            )}
+                        </>
+                    )}
+                    {/* Fallback for other tabs or mocks if needed */}
                 </View>
 
             </ScrollView>
@@ -166,19 +222,30 @@ const TagBadge = ({ text, color, icon }) => (
     </View>
 );
 
-const CoverItem = ({ title, plays, date }) => (
-    <View style={styles.coverItem}>
-        <Image source={{ uri: `https://via.placeholder.com/300?text=${title}` }} style={styles.coverImage} />
-        <View style={styles.coverOverlay}>
-            <View style={styles.playCountBadge}>
-                <Ionicons name="play" size={10} color="white" />
-                <Text style={styles.playCountText}>{plays}</Text>
+const CoverItem = ({ item }) => {
+    // Helper to format date
+    const formatDate = (dateString) => {
+        const date = new Date(dateString);
+        return date.toLocaleDateString();
+    };
+
+    return (
+        <View style={styles.coverItem}>
+            <Image
+                source={{ uri: item.songs?.cover_url || 'https://via.placeholder.com/300' }}
+                style={styles.coverImage}
+            />
+            <View style={styles.coverOverlay}>
+                <View style={[styles.playCountBadge, { backgroundColor: item.mode === 'Duet' ? '#FF00A2' : 'rgba(0,0,0,0.5)' }]}>
+                    <Ionicons name={item.mode === 'Duet' ? "people" : "mic"} size={10} color="white" />
+                    <Text style={styles.playCountText}>{item.mode}</Text>
+                </View>
             </View>
+            <Text style={styles.coverTitle} numberOfLines={1}>{item.songs?.title || 'Canción Desconocida'}</Text>
+            <Text style={styles.coverDate}>{formatDate(item.created_at)}</Text>
         </View>
-        <Text style={styles.coverTitle} numberOfLines={1}>{title}</Text>
-        <Text style={styles.coverDate}>{date}</Text>
-    </View>
-);
+    );
+};
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: 'white' },
@@ -235,6 +302,10 @@ const styles = StyleSheet.create({
     },
     friendBtnText: { color: 'white', fontWeight: 'bold' },
 
+    adminPanelBtn: { marginTop: 15, borderRadius: 20, overflow: 'hidden' },
+    adminGradient: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', paddingVertical: 10 },
+    adminText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
+
     giftBanner: { marginTop: 20, borderRadius: 15, overflow: 'hidden' },
     giftGradient: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 15 },
     giftTitle: { fontSize: 14, fontWeight: 'bold', color: '#D97706' },
@@ -256,6 +327,9 @@ const styles = StyleSheet.create({
     playCountText: { color: 'white', fontSize: 10, marginLeft: 2 },
     coverTitle: { fontSize: 12, fontWeight: '600', marginTop: 5, color: COLORS.text },
     coverDate: { fontSize: 10, color: COLORS.textMuted, marginTop: 1 },
+    emptyState: { width: '100%', alignItems: 'center', marginTop: 50 },
+    emptyText: { color: COLORS.textMuted, fontSize: 16, fontWeight: 'bold' },
+    emptySubText: { color: COLORS.textSecondary, fontSize: 14, marginTop: 5 },
 });
 
 export default ProfileScreen;

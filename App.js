@@ -112,10 +112,10 @@ const AppContent = () => {
             contentStyle: { backgroundColor: SAFE_BG },
           }}
         >
-          {user.role === 'admin' ? (
+          <Stack.Screen name="MainTabs" component={MainTabNavigator} />
+
+          {user.role === 'admin' && (
             <Stack.Screen name="AdminDashboard" component={AdminScreen} />
-          ) : (
-            <Stack.Screen name="MainTabs" component={MainTabNavigator} />
           )}
 
           <Stack.Screen

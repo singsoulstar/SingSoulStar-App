@@ -31,32 +31,49 @@ export const AuthProvider = ({ children }) => {
         return () => subscription.unsubscribe();
     }, []);
 
-    const mapSessionToUser = (session) => {
+    const mapSessionToUser = async (session) => {
         const { user } = session;
-        const profile = {
+
+        // Default profile from metadata
+        let profile = {
             id: user.id,
             email: user.email,
             name: user.user_metadata?.name || user.email.split('@')[0],
             avatar: user.user_metadata?.avatar || `https://i.pravatar.cc/150?u=${user.email}`,
-            gender: user.user_metadata?.gender || 'Secreto',
-            birthday: user.user_metadata?.birthday || '',
-            relationship: user.user_metadata?.relationship || 'Secreto',
-            hometown: user.user_metadata?.hometown || '',
-            bio: user.user_metadata?.bio || '¡Hola! Soy nuevo en SingSoulStar.',
-            education: user.user_metadata?.education || '',
-            profession: user.user_metadata?.profession || '',
-            role: 'user', // Default
-            permissions: []
+            role: 'user',
+            permissions: [],
+            bio: '¡Hola! Soy nuevo en SingSoulStar.'
         };
 
-        // Static Role Mapping (Coste Cero / No backend logic needed yet)
-        if (profile.email.toLowerCase() === 'admin@singsoulstar.com') {
-            profile.name = 'Super Admin';
+        // Try to fetch real profile from DB
+        try {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', user.id)
+                .single();
+
+            if (data && !error) {
+                profile = {
+                    ...profile,
+                    name: data.username || data.full_name || profile.name,
+                    avatar: data.avatar_url || profile.avatar,
+                    role: data.role || 'user',
+                    is_verified: data.is_verified,
+                    bio: data.bio || profile.bio,
+                    hometown: data.hometown,
+                    gender: data.gender,
+                    profession: data.profession
+                };
+            }
+        } catch (e) {
+            console.warn("DB Profile fetch failed, using metadata only", e);
+        }
+
+        // Static fallback for specific emails (Emergency Override)
+        const ADMIN_EMAILS = ['admin@singsoulstar.com', 'gnomoochenta@gmail.com', 'manuelubianvillarreal@gmail.com'];
+        if (ADMIN_EMAILS.includes(profile.email.toLowerCase())) {
             profile.role = 'admin';
-            profile.permissions = ['all'];
-        } else if (profile.email.toLowerCase().includes('assistant')) {
-            profile.role = 'assistant';
-            profile.permissions = ['moderate_chat', 'approve_songs'];
         }
 
         setUser(profile);

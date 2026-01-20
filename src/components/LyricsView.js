@@ -4,7 +4,7 @@ import { COLORS } from '../theme/colors';
 
 const ITEM_HEIGHT = 40; // Height of each lyric line
 
-const LyricsView = ({ lyrics, currentTime, mode = 'Solo' }) => {
+const LyricsView = ({ lyrics, currentTime, mode = 'Solo', userPart = 'Both' }) => {
     const scrollViewRef = useRef(null);
     const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -26,18 +26,22 @@ const LyricsView = ({ lyrics, currentTime, mode = 'Solo' }) => {
         }
     }, [currentTime, lyrics]);
 
-    const getLineColor = (line, isActive) => {
-        if (!isActive) return styles.text;
+    const getLineStyle = (line, isActive) => {
+        const isNotMyPart = mode === 'Duet' && userPart !== 'Both' && line.singer !== 'Both' && line.singer !== userPart;
+
+        let style = { ...styles.text };
+        if (isNotMyPart) {
+            style.opacity = 0.3;
+        }
+
+        if (!isActive) return style;
 
         // StarMaker Color Coding:
-        // Solo/Both: Gold/Pink
-        // Singer A: Blue
-        // Singer B: Pink
         if (mode === 'Duet') {
-            if (line.singer === 'A') return { color: '#00D4FF', fontSize: 22, fontWeight: 'bold' };
-            if (line.singer === 'B') return { color: '#FF00A2', fontSize: 22, fontWeight: 'bold' };
+            if (line.singer === 'A') return { ...style, color: '#00D4FF', fontSize: 22, fontWeight: 'bold', opacity: 1 };
+            if (line.singer === 'B') return { ...style, color: '#FF00A2', fontSize: 22, fontWeight: 'bold', opacity: 1 };
         }
-        return styles.activeText;
+        return { ...style, color: COLORS.accent, fontSize: 22, fontWeight: 'bold', opacity: 1 };
     };
 
     return (
@@ -55,8 +59,7 @@ const LyricsView = ({ lyrics, currentTime, mode = 'Solo' }) => {
                 return (
                     <View key={index} style={[styles.line, { height: ITEM_HEIGHT }]}>
                         <Text style={[
-                            styles.text,
-                            getLineColor(line, isActive),
+                            getLineStyle(line, isActive),
                             isPast && styles.pastText
                         ]}>
                             {line.text}
