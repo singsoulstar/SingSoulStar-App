@@ -1,47 +1,74 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ImageBackground, TouchableOpacity, ScrollView, TextInput, FlatList, Animated, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ImageBackground, TouchableOpacity, ScrollView, TextInput, FlatList, Animated, Dimensions, Alert, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, GRADIENTS } from '../theme/colors';
 import { LinearGradient } from 'expo-linear-gradient';
+import { RoomService } from '../services/RoomService';
+import { useAuth } from '../context/AuthContext';
 
 const { width, height } = Dimensions.get('window');
 
-const SEATS = [
-    { id: '1', name: 'Host', avatar: 'https://i.pravatar.cc/150?u=host', isHost: true, mic: true },
-    { id: '2', name: 'User 1', avatar: 'https://i.pravatar.cc/150?u=2', mic: false },
-    { id: '3', name: 'User 2', avatar: 'https://i.pravatar.cc/150?u=3', mic: false },
-    { id: '4', name: 'Empty', avatar: null },
-    { id: '5', name: 'Empty', avatar: null },
-    { id: '6', name: 'Empty', avatar: null },
-    { id: '7', name: 'Empty', avatar: null },
-    { id: '8', name: 'Empty', avatar: null },
-    { id: '9', name: 'Empty', avatar: null },
-];
-
-const MOCK_CHAT = [
-    { id: '1', user: 'System', text: 'Welcome to the room! Follow the rules.', type: 'system' },
-    { id: '2', user: 'Juan', text: 'Hello everyone! 👋', type: 'msg' },
-    { id: '3', user: 'Maria', text: 'Can I sing next?', type: 'msg' },
-];
+const INITIAL_SEATS = Array(9).fill(null).map((_, i) => ({
+    id: i.toString(),
+    index: i,
+    name: i === 0 ? 'Host' : 'Empty',
+    avatar: i === 0 ? 'https://i.pravatar.cc/150?u=host' : null,
+    isHost: i === 0,
+    mic: i === 0,
+    user_id: i === 0 ? 'host' : null
+}));
 
 const RoomDetailScreen = ({ route, navigation }) => {
-    const { room } = route.params || { room: { name: 'Live Room', host: 'Host', cover: 'https://via.placeholder.com/400' } };
-    const [messages, setMessages] = useState(MOCK_CHAT);
+    const { room } = route.params || { room: { id: 'test_room', name: 'Live Room', host: 'Host', cover: 'https://via.placeholder.com/400' } };
+    const { user } = useAuth();
+
+    // State
+    const [seats, setSeats] = useState(INITIAL_SEATS);
+    const [messages, setMessages] = useState([]);
     const [inputText, setInputText] = useState('');
     const [giftAnimation, setGiftAnimation] = useState(new Animated.Value(0));
     const [showGift, setShowGift] = useState(false);
+    const [channel, setChannel] = useState(null);
 
     const chatRef = useRef(null);
 
-    const sendMessage = () => {
-        if (!inputText.trim()) return;
-        const newMsg = { id: Date.now().toString(), user: 'Me', text: inputText, type: 'msg' };
-        setMessages([...messages, newMsg]);
-        setInputText('');
+    useEffect(() => {
+        // Subscribe to Realtime Room
+        const newChannel = RoomService.subscribeToRoom(
+            room.id,
+            (msg) => setMessages(prev => [...prev, msg]),
+            (seatPayload) => updateSeatState(seatPayload),
+            (giftPayload) => triggerGiftAnimation(giftPayload)
+        );
+        setChannel(newChannel);
+
+        // System Welcome Message
+        setMessages([{ id: 'sys', user: 'System', text: `Welcome to ${room.name}!`, type: 'system' }]);
+
+        return () => {
+            if (newChannel) supabase.removeChannel(newChannel);
+        };
+    }, [room.id]);
+
+    const updateSeatState = ({ index, user: seatUser }) => {
+        setSeats(prev => prev.map(seat => {
+            if (seat.index === index) {
+                return {
+                    ...seat,
+                    name: seatUser ? seatUser.name : 'Empty',
+                    avatar: seatUser ? seatUser.avatar : null,
+                    user_id: seatUser ? seatUser.id : null,
+                    mic: !!seatUser
+                };
+            }
+            return seat;
+        }));
     };
 
-    const sendGift = () => {
+    const triggerGiftAnimation = (payload) => {
+        // Could show who sent what
+        // console.log("Gift received", payload);
         setShowGift(true);
         Animated.sequence([
             Animated.spring(giftAnimation, { toValue: 1, useNativeDriver: true }),
@@ -50,9 +77,54 @@ const RoomDetailScreen = ({ route, navigation }) => {
         ]).start(() => setShowGift(false));
     };
 
-    const renderSeat = ({ item, index }) => (
-        <View style={styles.seatContainer}>
-            <View style={styles.seatCircle}>
+    const sendMessage = async () => {
+        if (!inputText.trim()) return;
+        if (!user) {
+            Alert.alert("Login Required", "Please login to chat.");
+            return;
+        }
+
+        await RoomService.sendMessage(channel, user, inputText);
+        // Optimistic update handled by broadcast subscription usually, 
+        // but since we allow self-broadcast in RoomService, we wait for it to come back.
+        setInputText('');
+    };
+
+    const sendGift = async () => {
+        if (!user) return;
+        await RoomService.sendGift(channel, user, 'Heart');
+    };
+
+    const handleSeatPress = async (seat) => {
+        // Logic: If empty, take it. If mine, leave it.
+        if (!user) return;
+
+        // Check if I'm already in a seat
+        const myCurrentSeat = seats.find(s => s.user_id === user.id);
+
+        if (seat.user_id === user.id) {
+            // Leave seat
+            Alert.alert("Leave Seat", "Do you want to step down?", [
+                { text: "Cancel", style: "cancel" },
+                { text: "Leave", onPress: () => RoomService.updateSeat(channel, seat.index, null) }
+            ]);
+        } else if (!seat.user_id) {
+            // Take seat (only if I'm not seated elsewhere)
+            if (myCurrentSeat) {
+                Alert.alert("Info", "You are already seated.");
+            } else {
+                await RoomService.updateSeat(channel, seat.index, user);
+            }
+        }
+    };
+
+    const renderSeat = ({ item }) => (
+        <TouchableOpacity
+            style={styles.seatContainer}
+            onPress={() => handleSeatPress(item)}
+            activeOpacity={0.7}
+        >
+            <View style={[styles.seatCircle, item.mic && { borderColor: COLORS.success }]}>
                 {item.avatar ? (
                     <Image source={{ uri: item.avatar }} style={styles.seatAvatar} />
                 ) : (
@@ -63,14 +135,14 @@ const RoomDetailScreen = ({ route, navigation }) => {
                         <Text style={styles.hostText}>Host</Text>
                     </View>
                 )}
-                {item.mic && (
+                {item.user_id && item.mic && (
                     <View style={styles.micBadge}>
                         <Ionicons name="mic" size={10} color="white" />
                     </View>
                 )}
             </View>
-            <Text style={styles.seatName}>{item.name}</Text>
-        </View>
+            <Text style={styles.seatName} numberOfLines={1}>{item.name}</Text>
+        </TouchableOpacity>
     );
 
     const renderMessage = ({ item }) => (
@@ -91,8 +163,8 @@ const RoomDetailScreen = ({ route, navigation }) => {
                         <View style={styles.roomInfoPill}>
                             <Image source={{ uri: room.cover }} style={styles.roomThumb} />
                             <View>
-                                <Text style={styles.roomTitle}>{room.name}</Text>
-                                <Text style={styles.roomId}>ID: 123456</Text>
+                                <Text style={styles.roomTitle} numberOfLines={1}>{room.name}</Text>
+                                <Text style={styles.roomId}>ID: {room.id.substring(0, 6)}</Text>
                             </View>
                             <TouchableOpacity style={styles.followBtn}>
                                 <Text style={styles.followText}>+</Text>
@@ -101,7 +173,7 @@ const RoomDetailScreen = ({ route, navigation }) => {
 
                         <View style={styles.headerRight}>
                             <View style={styles.onlinePill}>
-                                <Text style={styles.onlineText}>124</Text>
+                                <Text style={styles.onlineText}>LIVE</Text>
                             </View>
                             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeBtn}>
                                 <Ionicons name="close" size={24} color="white" />
@@ -112,7 +184,7 @@ const RoomDetailScreen = ({ route, navigation }) => {
                     {/* Seats Grid */}
                     <View style={styles.seatsGrid}>
                         <FlatList
-                            data={SEATS}
+                            data={seats}
                             renderItem={renderSeat}
                             keyExtractor={item => item.id}
                             numColumns={3}
@@ -121,7 +193,7 @@ const RoomDetailScreen = ({ route, navigation }) => {
                         />
                     </View>
 
-                    {/* Middle Spacer (Lyrics/Game area) */}
+                    {/* Middle Spacer */}
                     <View style={{ flex: 1 }} />
 
                     {/* Chat Area */}
@@ -133,7 +205,7 @@ const RoomDetailScreen = ({ route, navigation }) => {
                             keyExtractor={item => item.id}
                             style={styles.chatList}
                             contentContainerStyle={{ paddingBottom: 10 }}
-                            onContentSizeChange={() => chatRef.current.scrollToEnd()}
+                            onContentSizeChange={() => chatRef.current?.scrollToEnd()}
                         />
                     </View>
 
@@ -196,8 +268,8 @@ const styles = StyleSheet.create({
     followText: { color: 'white', fontWeight: 'bold' },
 
     headerRight: { flexDirection: 'row', alignItems: 'center' },
-    onlinePill: { backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, marginRight: 10 },
-    onlineText: { color: 'white', fontSize: 12 },
+    onlinePill: { backgroundColor: 'rgba(255,0,0,0.6)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, marginRight: 10 },
+    onlineText: { color: 'white', fontSize: 12, fontWeight: 'bold' },
     closeBtn: { padding: 5 },
 
     seatsGrid: { marginTop: 20, paddingHorizontal: 20 },
@@ -208,9 +280,10 @@ const styles = StyleSheet.create({
     seatName: { color: 'white', fontSize: 10, marginTop: 4 },
     hostBadge: { position: 'absolute', bottom: -5, backgroundColor: COLORS.primary, paddingHorizontal: 4, borderRadius: 4 },
     hostText: { color: 'white', fontSize: 8, fontWeight: 'bold' },
-    micBadge: { position: 'absolute', bottom: 0, right: 0, backgroundColor: 'blue', width: 16, height: 16, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
+    micBadge: { position: 'absolute', bottom: 0, right: 0, backgroundColor: COLORS.success, width: 16, height: 16, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
 
     chatContainer: { height: 200, paddingHorizontal: 15, paddingBottom: 10 },
+    chatList: { flex: 1 },
     chatBubble: { backgroundColor: 'rgba(0,0,0,0.4)', alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, marginBottom: 5, maxWidth: '80%' },
     systemBubble: { backgroundColor: 'transparent', alignSelf: 'center' },
     chatUser: { color: '#FFD700', fontSize: 12, fontWeight: 'bold' },

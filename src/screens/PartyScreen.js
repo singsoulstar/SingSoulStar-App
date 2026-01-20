@@ -19,8 +19,25 @@ const MOCK_ROOMS = [
 
 const CATEGORIES = ['All', 'Singing', 'Chat', 'Games', 'Live'];
 
+import { useAuth } from '../context/AuthContext';
+
 const PartyScreen = ({ navigation }) => {
+    const { user } = useAuth();
     const [activeCat, setActiveCat] = useState('All');
+
+    const handleCreateRoom = () => {
+        if (!user) {
+            // alert or login redirect
+            return;
+        }
+        const newRoom = {
+            id: `room_${user.id}_${Date.now()}`,
+            name: `${user.name || 'User'}'s Party`,
+            host: user.name || 'Host',
+            cover: user.avatar || 'https://via.placeholder.com/300'
+        };
+        navigation.navigate('RoomDetail', { room: newRoom });
+    };
 
     const renderRoom = ({ item }) => (
         <TouchableOpacity
@@ -66,13 +83,14 @@ const PartyScreen = ({ navigation }) => {
                     <TouchableOpacity style={styles.iconBtn}>
                         <Ionicons name="search" size={24} color="white" />
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.iconBtn}>
+                    <TouchableOpacity style={styles.iconBtn} onPress={handleCreateRoom}>
                         <LinearGradient colors={GRADIENTS.primary} style={styles.createRoomBtn}>
                             <Ionicons name="add" size={20} color="white" />
                         </LinearGradient>
                     </TouchableOpacity>
                 </View>
             </View>
+// ...
 
             {/* Categories */}
             <View style={styles.categoriesContainer}>
