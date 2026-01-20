@@ -217,8 +217,8 @@ const RecordingScreen = ({ route, navigation }) => {
                                     {isJoining ? `Duet with ${parentRecording?.profiles?.username || 'Star'}` : song.artist}
                                 </Text>
                             </View>
-                            <TouchableOpacity style={styles.headerIcon}>
-                                <Ionicons name="ellipsis-horizontal" size={24} color="white" />
+                            <TouchableOpacity style={styles.headerIcon} onPress={() => setShowPostRecord(true)}>
+                                <Ionicons name="settings-sharp" size={24} color="white" />
                             </TouchableOpacity>
                         </View>
 
@@ -234,7 +234,7 @@ const RecordingScreen = ({ route, navigation }) => {
                                 <View style={styles.duetHeader}>
                                     <TouchableOpacity
                                         style={[styles.participant, userPart === 'A' && styles.activeParticipant, { borderColor: '#00D4FF' }]}
-                                        onPress={() => !isJoining && setUserPart('A')} // Lock if joining
+                                        onPress={() => !isJoining && setUserPart('A')}
                                         disabled={isJoining}
                                     >
                                         <Text style={styles.participantText}>SINGER A</Text>
@@ -245,7 +245,7 @@ const RecordingScreen = ({ route, navigation }) => {
                                     </View>
                                     <TouchableOpacity
                                         style={[styles.participant, userPart === 'B' && styles.activeParticipant, { borderColor: '#FF00A2' }]}
-                                        onPress={() => !isJoining && setUserPart('B')} // Lock if joining
+                                        onPress={() => !isJoining && setUserPart('B')}
                                         disabled={isJoining}
                                     >
                                         <Text style={styles.participantText}>SINGER B</Text>
@@ -274,28 +274,18 @@ const RecordingScreen = ({ route, navigation }) => {
                         <View style={styles.bottomControls}>
                             <View style={styles.timeInfo}>
                                 <Text style={styles.timerLarge}>{formatTime(duration)}</Text>
-                                <Text style={styles.totalTime}> / {playbackStatus?.durationMillis ? formatTime(playbackStatus.durationMillis) : '0:00'}</Text>
                             </View>
 
                             <View style={styles.actionsRow}>
-                                <TouchableOpacity
-                                    style={styles.sideBtn}
-                                    onPress={async () => {
-                                        if (!permission?.granted) {
-                                            const { status } = await requestPermission();
-                                            if (status === 'granted') setIsVideoMode(!isVideoMode);
-                                            else Alert.alert("Permiso Denegado", "Se necesita cámara para el modo video.");
-                                        } else {
-                                            setIsVideoMode(!isVideoMode);
-                                        }
-                                    }}
-                                >
-                                    <View style={[styles.iconCircle, isVideoMode && styles.activeIconCircle]}>
-                                        <Ionicons name={isVideoMode ? "videocam" : "videocam-outline"} size={24} color="white" />
+                                {/* MONITOR BTN (Left) */}
+                                <TouchableOpacity style={styles.sideBtn} onPress={() => Alert.alert("Monitor", "La monitorización requiere auriculares.")}>
+                                    <View style={styles.iconCircle}>
+                                        <Ionicons name="headset" size={24} color="white" />
                                     </View>
-                                    <Text style={styles.sideText}>{isVideoMode ? 'On' : 'Off'}</Text>
+                                    <Text style={styles.sideText}>Monitor</Text>
                                 </TouchableOpacity>
 
+                                {/* RECORD BTN (Center) */}
                                 <TouchableOpacity
                                     style={styles.mainRecordBtn}
                                     onPress={isRecording ? stopRecording : startRecording}
@@ -310,11 +300,23 @@ const RecordingScreen = ({ route, navigation }) => {
                                     </LinearGradient>
                                 </TouchableOpacity>
 
-                                <TouchableOpacity style={styles.sideBtn} onPress={() => setAudioEffect('Reverb')}>
-                                    <View style={styles.iconCircle}>
-                                        <Ionicons name="options-outline" size={24} color="white" />
+                                {/* CAMERA BTN (Right) */}
+                                <TouchableOpacity
+                                    style={styles.sideBtn}
+                                    onPress={async () => {
+                                        if (!permission?.granted) {
+                                            const { status } = await requestPermission();
+                                            if (status === 'granted') setIsVideoMode(!isVideoMode);
+                                            else Alert.alert("Permiso Denegado", "Se necesita cámara para el modo video.");
+                                        } else {
+                                            setIsVideoMode(!isVideoMode);
+                                        }
+                                    }}
+                                >
+                                    <View style={[styles.iconCircle, isVideoMode && { backgroundColor: COLORS.primary, borderColor: COLORS.primary }]}>
+                                        <Ionicons name={isVideoMode ? "videocam" : "videocam-outline"} size={24} color="white" />
                                     </View>
-                                    <Text style={styles.sideText}>Efectos</Text>
+                                    <Text style={styles.sideText}>Cámara</Text>
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -323,8 +325,9 @@ const RecordingScreen = ({ route, navigation }) => {
             </ImageBackground>
 
             {/* Studio Effects Modal */}
-            <Modal visible={showPostRecord} animationType="slide" transparent={true}>
+            <Modal visible={showPostRecord} animationType="slide" transparent={true} onRequestClose={() => setShowPostRecord(false)}>
                 <View style={styles.modalBg}>
+
                     <View style={styles.modalSheet}>
                         <View style={styles.sheetHandle} />
                         <Text style={styles.sheetTitle}>Estudio de Sonido</Text>

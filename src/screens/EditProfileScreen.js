@@ -87,7 +87,7 @@ const EditProfileScreen = ({ navigation }) => {
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                    <Ionicons name="arrow-back" size={24} color="white" />
+                    <Ionicons name="arrow-back" size={24} color={COLORS.text} />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Editar Perfil</Text>
                 <TouchableOpacity onPress={handleSave} disabled={loading}>
@@ -139,21 +139,21 @@ const EditProfileScreen = ({ navigation }) => {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: COLORS.background },
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 15, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.1)' },
-    headerTitle: { color: 'white', fontSize: 18, fontWeight: 'bold' },
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 15, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+    headerTitle: { color: COLORS.text, fontSize: 18, fontWeight: 'bold' },
     backBtn: { padding: 5 },
-    saveText: { color: COLORS.accent, fontSize: 16, fontWeight: 'bold' },
+    saveText: { color: COLORS.primary, fontSize: 16, fontWeight: 'bold' },
 
     content: { padding: 20 },
     avatarSection: { alignItems: 'center', marginBottom: 30 },
     avatarWrapper: { position: 'relative' },
     avatar: { width: 100, height: 100, borderRadius: 50, borderWidth: 2, borderColor: COLORS.primary },
-    cameraIcon: { position: 'absolute', bottom: 0, right: 0, backgroundColor: COLORS.accent, padding: 8, borderRadius: 20 },
-    changePhotoText: { color: COLORS.accent, marginTop: 10, fontSize: 14 },
+    cameraIcon: { position: 'absolute', bottom: 0, right: 0, backgroundColor: COLORS.primary, padding: 8, borderRadius: 20 },
+    changePhotoText: { color: COLORS.primary, marginTop: 10, fontSize: 14, fontWeight: 'bold' },
 
     formElement: { marginBottom: 20 },
-    label: { color: '#888', marginBottom: 5, fontSize: 12, textTransform: 'uppercase' },
-    input: { backgroundColor: COLORS.surface, color: 'white', padding: 15, borderRadius: 10, fontSize: 16 },
+    label: { color: COLORS.textSecondary, marginBottom: 5, fontSize: 12, textTransform: 'uppercase', fontWeight: '600' },
+    input: { backgroundColor: '#F9FAFB', color: COLORS.text, padding: 15, borderRadius: 10, fontSize: 16, borderWidth: 1, borderColor: '#E5E7EB' },
     textArea: { height: 100, textAlignVertical: 'top' },
     row: { flexDirection: 'row' }
 });

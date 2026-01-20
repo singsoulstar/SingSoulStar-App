@@ -75,38 +75,14 @@ const LoginScreen = ({ navigation }) => {
                                 {isLoading ? (
                                     <ActivityIndicator color="white" />
                                 ) : (
-                                    <Text style={styles.loginText}>Log In</Text>
+                                    <Text style={styles.loginText}>Iniciar Sesión</Text>
                                 )}
                             </LinearGradient>
                         </TouchableOpacity>
 
                         <TouchableOpacity style={styles.forgotBtn}>
-                            <Text style={styles.forgotText}>Forgot Password?</Text>
+                            <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
                         </TouchableOpacity>
-
-                        {/* Dev Quick Login */}
-                        <View style={styles.devSection}>
-                            <Text style={styles.devTitle}>Dev Quick Login:</Text>
-                            <View style={styles.devRow}>
-                                <TouchableOpacity style={[styles.devBtn, { borderColor: COLORS.error }]} onPress={() => quickLogin('admin@singsoulstar.com')}>
-                                    <Text style={{ color: COLORS.error }}>Admin</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity style={[styles.devBtn, { borderColor: COLORS.warning }]} onPress={() => quickLogin('assistant@test.com')}>
-                                    <Text style={{ color: COLORS.warning }}>Assistant</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity style={[styles.devBtn, { borderColor: COLORS.success }]} onPress={() => quickLogin('user@test.com')}>
-                                    <Text style={{ color: COLORS.success }}>User</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-
-                        <Text style={styles.orText}>Or login with</Text>
-
-                        <View style={styles.socialRow}>
-                            <SocialButton icon="logo-google" color="#DB4437" />
-                            <SocialButton icon="logo-facebook" color="#4267B2" />
-                            <SocialButton icon="logo-apple" color={COLORS.text} />
-                        </View>
                     </View>
 
                     <View style={styles.footer}>
@@ -121,13 +97,6 @@ const LoginScreen = ({ navigation }) => {
     );
 };
 
-// Removed IconLogo as we use an asset image now.
-
-const SocialButton = ({ icon, color }) => (
-    <TouchableOpacity style={styles.socialBtn}>
-        <Ionicons name={icon} size={24} color={color} />
-    </TouchableOpacity>
-);
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: COLORS.background },

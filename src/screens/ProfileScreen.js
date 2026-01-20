@@ -275,12 +275,12 @@ const styles = StyleSheet.create({
     statsContainer: { flex: 1, flexDirection: 'row', justifyContent: 'space-around' },
     statBox: { alignItems: 'center' },
     statValue: { fontSize: 18, fontWeight: 'bold', color: COLORS.text },
-    statLabel: { fontSize: 12, color: COLORS.textMuted },
+    statLabel: { fontSize: 12, color: COLORS.textSecondary, fontWeight: '600' },
 
     nameSection: { marginTop: 15 },
     username: { fontSize: 22, fontWeight: 'bold', color: COLORS.text },
     idRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
-    userId: { fontSize: 12, color: COLORS.textMuted },
+    userId: { fontSize: 12, color: COLORS.textSecondary },
 
     tagsRow: { flexDirection: 'row', marginTop: 10, flexWrap: 'wrap', gap: 8 },
     tagBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
